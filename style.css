@@ -14,6 +14,10 @@
   --fg-faint: #686f7f;
   --border: #e4e7ee;
   --border-strong: #d2d7e1;
+  /* 工具类图标按钮（.theme-btn）的描边色。
+   * 它对页面底 --bg 的对比度需 ≥3:1（WCAG 1.4.11 控件边界）：#7d8cae ↔ #f5f7fb = 3.14:1。
+   * 深色对应 #5f708f（↔ #0e1117 = 3.78:1）。改此值必须同步另外两处主题块。 */
+  --ctl-border: #7d8cae;
   --input-bg: #ffffff;
   --accent: #4f46e5;
   --accent-2: #06b6d4;
@@ -55,6 +59,7 @@
     --fg-faint: #7c8698;
     --border: #262c38;
     --border-strong: #333b49;
+    --ctl-border: #5f708f;
     --input-bg: #0f131a;
     --accent: #7c86ff;
     --accent-2: #22d3ee;
@@ -92,6 +97,7 @@
   --fg-faint: #7c8698;
   --border: #262c38;
   --border-strong: #333b49;
+  --ctl-border: #5f708f;
   --input-bg: #0f131a;
   --accent: #7c86ff;
   --accent-2: #22d3ee;
@@ -194,11 +200,20 @@ h1.title {
 .link-btn:focus-visible { outline: none; box-shadow: var(--focus); }
 
 /* ---------- theme icon button ---------- */
+/* 浅色下「不明显」的成因：原为透明底 + border:1px solid var(--border)(#e4e7ee)，
+ *   该边框对页面底色 --bg(#f5f7fb) 的对比度仅 1.15:1（远低于 UI 控件边界所需的 3:1），
+ *   图标虽可见（5.96:1），但整块读不出「这是个按钮」，与相邻的高对比红描边重置按钮也不成对。
+ * 对策：①提升为「实心卡片式」控件（卡面底色 + --shadow-sm 投影），靠「面 + 投影 + 描边」共同界定控件范围；
+ *       ②描边改用 --ctl-border（浅色 #7d8cae ↔ #f5f7fb = 3.14:1，深色 #5f708f ↔ #0e1117 = 3.78:1），
+ *         使边界本身也满足 WCAG 1.4.11 的 3:1。
+ * 图标沿用 --fg-muted（浅色 5.96:1、深色 7.54:1）不变。
+ * 说明：--ctl-border 已在三处主题块同步定义；其余复用现有 token。 */
 .theme-btn {
   appearance: none;
-  border: 1px solid var(--border);
-  background: transparent;
+  border: 1px solid var(--ctl-border);
+  background: var(--card);
   color: var(--fg-muted);
+  box-shadow: var(--shadow-sm);
   width: 36px;
   height: 36px;
   border-radius: 10px;
@@ -209,7 +224,12 @@ h1.title {
   cursor: pointer;
   transition: color .15s ease, border-color .15s ease, background .15s ease;
 }
-.theme-btn:hover { color: var(--accent); border-color: var(--border-strong); background: var(--accent-soft); }
+/* hover 的 border-color 改为靛色微混：底色已提到 --ctl-border，否则 hover 的边框变化会变成空操作 */
+.theme-btn:hover {
+  color: var(--accent);
+  border-color: color-mix(in srgb, var(--accent) 50%, var(--ctl-border));
+  background: var(--accent-soft);
+}
 .theme-btn:focus-visible { outline: none; box-shadow: var(--focus); }
 .theme-btn svg { display: block; }
 
@@ -219,6 +239,8 @@ h1.title {
   background: transparent;
   border-color: var(--danger);
   color: var(--danger);
+  /* 该按钮的红色描边本身已达 4.5:1，不需要投影，保持纯描边观感（勿删） */
+  box-shadow: none;
 }
 #resetBtn:hover {
   background: var(--danger-soft);
@@ -544,6 +566,16 @@ h1.title {
 .btn-primary {
   color: #fff;
   background: linear-gradient(96deg, var(--accent), var(--accent-2));
+  /* ⚠️ 必须保留：让渐变铺满整个 border box，消除「边缘漏光」（边缘镜像色带）。
+   * 成因：.btn 有 `border:1px solid transparent`，而浏览器初始值
+   *   background-origin:padding-box + background-clip:border-box + background-repeat:repeat
+   *   → 渐变图（尺寸 = padding box）在 border box 内平铺，左右各 1px 环带取到「渐变对侧」颜色
+   *   （左环带 = 渐变终点色、右环带 = 渐变起点色）。
+   * 修法唯一有效解：background-origin:border-box（只加 no-repeat 无效，反而让透明边框露出页面底色）。
+   * 位置很关键：必须写在这里、且排在 `background:` 简写「之后」—— 因为 background 简写会把
+   *   background-origin 重置回初始值 padding-box；若只写在 .btn 上会被本规则的简写悄悄覆盖而失效。 */
+  background-origin: border-box;
+  background-repeat: no-repeat;
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 28px -12px rgba(79, 70, 229, 0.32);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 28px -12px color-mix(in srgb, var(--accent) 40%, transparent);
 }
@@ -638,7 +670,14 @@ h1.title {
 .cmd-title { font-size: 14px; font-weight: 700; letter-spacing: 0.01em; }
 
 .btn-copy { padding: 9px 16px; font-size: 13.5px; }
-.btn-copy.is-copied { background: linear-gradient(96deg, var(--ok), #10b981); box-shadow: none; }
+/* 复制成功态改用绿色渐变，同样是「透明边框 + 渐变底」，与 .btn-primary 同理：
+   本规则的 `background:` 简写会重置 background-origin，故必须在此显式补上，避免复制态重新漏光。 */
+.btn-copy.is-copied {
+  background: linear-gradient(96deg, var(--ok), #10b981);
+  background-origin: border-box;
+  background-repeat: no-repeat;
+  box-shadow: none;
+}
 .btn-copy[disabled] { cursor: not-allowed; opacity: 0.5; filter: grayscale(0.3); box-shadow: none; transform: none; }
 
 .cmd-box {
