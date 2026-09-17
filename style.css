@@ -20,12 +20,14 @@
   --accent-soft: rgba(79, 70, 229, 0.10);
   /* 徽标文字色（浅色下与 --accent 相同；深色下换成更亮的色以保证 AA） */
   --tag-fg: #4f46e5;
-  /* 传输分类气泡：UDP / TCP / Argo 三色成对（浅色一套） */
+  /* 传输分类气泡：UDP / TCP / Argo 三色成对（浅色一套）
+   * Argo 文字用深橙 #9a3412（用户拍板保留橙色系）：#FF9500 在 #ffe9c7 上对比度仅 1.86，
+   * #9a3412 实测 6.17 ≥ 4.5 达标。改此值必须同步另外两处主题块。 */
   --tag-udp-fg: #0e7490;
   --tag-udp-bg: #cffafe;
   --tag-tcp-fg: #4338ca;
   --tag-tcp-bg: #e0e7ff;
-  --tag-argo-fg: #FF9500;
+  --tag-argo-fg: #9a3412;
   --tag-argo-bg: #ffe9c7;
   --danger: #dc2626;
   --danger-soft: rgba(220, 38, 38, 0.09);
@@ -62,7 +64,7 @@
     --tag-udp-bg: rgba(34, 211, 238, 0.18);
     --tag-tcp-fg: #a5b4fc;
     --tag-tcp-bg: rgba(124, 134, 255, 0.18);
-    --tag-argo-fg: #cbd5e1;
+    --tag-argo-fg: #FF9500;
     --tag-argo-bg: rgba(148, 163, 184, 0.20);
     --danger: #f87171;
     --danger-soft: rgba(248, 113, 113, 0.14);
@@ -362,7 +364,7 @@ h1.title {
   height: 36px;
   padding: 0 12px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: 10px;
   background: transparent;
   color: var(--fg-muted);
   display: inline-flex;
@@ -379,19 +381,32 @@ h1.title {
 .card-btn-del { color: var(--danger); border-color: var(--danger); }
 .card-btn-del:hover { background: var(--danger-soft); border-color: var(--danger); color: var(--danger); }
 
+/* 独立描边控件：自包含 36px 高（不再叠加 .btn，避免多类优先级互相覆盖）。
+ * 字号 / 内边距 / 间距 / 圆角与 .card-btn 完全一致 —— 两者文本都是 4 个汉字 + 图标，
+ * 指标一致才能保证「随机生成」与「移除节点」等宽（实测均 98px）。 */
 .icon-btn {
   appearance: none;
-  border: 1px solid var(--border);
+  border: 1px solid var(--border-strong);
   background: transparent;
   color: var(--fg-faint);
   font: inherit;
-  font-size: 13px;
-  padding: 6px 10px;
-  border-radius: 9px;
+  font-size: 12.5px;
+  font-weight: 600;
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;      /* 与相邻的 UUID 输入框、卡片按钮一致 */
   cursor: pointer;
   white-space: nowrap;
-  transition: color .15s ease, border-color .15s ease, background .15s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  flex: 0 0 auto;
+  transition: color .15s ease, border-color .15s ease, background .15s ease, transform .12s ease;
 }
+.icon-btn:active { transform: translateY(1px); }
+.icon-btn svg { display: block; flex: 0 0 auto; }
+.icon-btn-text { white-space: nowrap; }
 .icon-btn:hover { color: var(--danger); border-color: color-mix(in srgb, var(--danger) 45%, var(--border)); background: var(--danger-soft); }
 .icon-btn:focus-visible { outline: none; box-shadow: var(--focus); }
 
@@ -472,9 +487,10 @@ h1.title {
 .port-input { font-variant-numeric: tabular-nums; letter-spacing: 0.02em; min-width: 0; }
 .port-row .icon-btn { flex: 0 0 auto; white-space: nowrap; }
 
-/* 端口输入框：高度与卡片按钮（移除节点）严格相等，右侧留白给内嵌图标 */
+/* 输入框：统一高度 36px，与卡片按钮（移除节点）/ UUID 行按钮严格相等 */
 .card-port .port-input,
-.adv-panel .text-input {
+.adv-panel .text-input,
+.uuid-input {
   height: 36px;
   padding-top: 0;
   padding-bottom: 0;
@@ -521,13 +537,20 @@ h1.title {
 .btn:focus-visible { outline: none; box-shadow: var(--focus); }
 .btn:active { transform: translateY(1px); }
 
+/* 主按钮（渐变底）：
+ * - 外发光必须「负扩张够深 + 透明度够低」，否则光晕会贴着按钮边缘形成 1–2px 亮圈
+ *   （深色主题下尤其明显，曾表现为「边角漏光」，故 spread 由 -6 收紧到 -12）；
+ * - 顶部 1px 内高光做玻璃质感，同时弱化圆角抗锯齿带来的毛边。 */
 .btn-primary {
   color: #fff;
   background: linear-gradient(96deg, var(--accent), var(--accent-2));
-  box-shadow: 0 6px 18px -6px rgba(79, 70, 229, 0.55);
-  box-shadow: 0 6px 18px -6px color-mix(in srgb, var(--accent) 70%, transparent);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 28px -12px rgba(79, 70, 229, 0.32);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 28px -12px color-mix(in srgb, var(--accent) 40%, transparent);
 }
-.btn-primary:hover { box-shadow: 0 10px 24px -6px rgba(79, 70, 229, 0.6); box-shadow: 0 10px 24px -6px color-mix(in srgb, var(--accent) 80%, transparent); }
+.btn-primary:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 12px 32px -12px rgba(79, 70, 229, 0.42);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 12px 32px -12px color-mix(in srgb, var(--accent) 52%, transparent);
+}
 
 .btn-secondary {
   color: var(--fg);
@@ -728,9 +751,23 @@ h1.title {
 /* ---------- responsive ---------- */
 @media (max-width: 480px) {
   .wrap { padding: 26px 14px 48px; }
-  h1.title { font-size: 21px; }
-  .top { flex-direction: column; gap: 10px; }
-  .toolbar { flex-direction: row; align-items: center; }
+  /* 窄屏头部：标题与两个按钮同处第一行（按钮靠右上角），副标题独占第二行、撑满整行。
+   * 沿用卡片头的 grid-area 重排思路，不用绝对定位；不改 DOM 顺序。 */
+  .top {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "title tools"
+      "sub   sub";
+    column-gap: 12px;
+    row-gap: 6px;
+    align-items: start;
+  }
+  /* 把 h1.title / p.subtitle 提升为网格项：标题与工具栏同行，副标题独占整行 */
+  .top > div:first-child { display: contents; }
+  h1.title { grid-area: title; margin: 0; font-size: 21px; }
+  .subtitle { grid-area: sub; }
+  .toolbar { grid-area: tools; flex-direction: row; align-items: center; }
   .uuid-section { border-radius: 14px; padding: 14px; }
   .card { border-radius: 14px; padding: 14px; }
   .btn-add { padding: 12px 14px; }

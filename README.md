@@ -31,17 +31,18 @@ python -m http.server 8080
 例如全部节点开启、Argo 使用固定隧道并填写了 CF 优选：
 
 ```bash
-UUID=b7e4b1f0-3c2a-4d9e-8f11-2a3b4c5d6e7f CFIP=mfa.gov.ua CFPORT=443 HY2_PORT=20100 TUIC_PORT=20200 REALITY_PORT=20300 S5_PORT=20400 ANYTLS_PORT=20500 ANYREALITY_PORT=20600 ARGO_PORT=8001 ARGO_DOMAIN=argo.example.com ARGO_AUTH='tok' bash <(curl -Ls https://main.ssss.nyc.mn/sb.sh)
+UUID=b7e4b1f0-3c2a-4d9e-8f11-2a3b4c5d6e7f NAME=test CFIP=mfa.gov.ua CFPORT=443 HY2_PORT=20100 TUIC_PORT=20200 REALITY_PORT=20300 S5_PORT=20400 ANYTLS_PORT=20500 ANYREALITY_PORT=20600 ARGO_PORT=8001 ARGO_DOMAIN=argo.example.com ARGO_AUTH='tok' bash <(curl -Ls https://main.ssss.nyc.mn/sb.sh)
 ```
 
 ### 变量输出顺序（固定）
 
 ```
-UUID → CFIP → CFPORT → HY2_PORT → TUIC_PORT → REALITY_PORT → S5_PORT → ANYTLS_PORT → ANYREALITY_PORT → ARGO_PORT → ARGO_DOMAIN → ARGO_AUTH → DISABLE_ARGO
+UUID → NAME → CFIP → CFPORT → HY2_PORT → TUIC_PORT → REALITY_PORT → S5_PORT → ANYTLS_PORT → ANYREALITY_PORT → ARGO_PORT → ARGO_DOMAIN → ARGO_AUTH → DISABLE_ARGO
 ```
 
 - `UUID` 永远排在最前面，输出为 `UUID=<值>`（不加引号）。
-- `CFIP` / `CFPORT`（「基础配置」组）仅 **Argo 启用时**出现，排在 `UUID` 之后、第一个 `*_PORT` 之前；两个都留空则不输出。
+- `NAME`（节点名称）紧跟 `UUID` 之后，输出为 `NAME=<值>`（不加引号）；**留空则完全不输出**该变量。
+- `CFIP` / `CFPORT`（「基础配置」组）仅 **Argo 启用时**出现，排在 `UUID` / `NAME` 之后、第一个 `*_PORT` 之前；两个都留空则不输出。
 - 选中某协议 = 输出它的端口变量；不选则完全不输出。
 - `ARGO_PORT` / `ARGO_DOMAIN` / `ARGO_AUTH` 仅在 Argo 启用时出现，位于 6 个直连端口之后。
 - Argo 默认安装；删除 Argo 会追加 `DISABLE_ARGO=true`（恒在末位）。
@@ -52,6 +53,7 @@ UUID → CFIP → CFPORT → HY2_PORT → TUIC_PORT → REALITY_PORT → S5_PORT
 | 变量 | 含义 | 说明 |
 | --- | --- | --- |
 | `UUID` | 所有节点的全局鉴权标识 | 标准 UUID（8-4-4-4-12 十六进制）；页面会预填一个随机 UUIDv4，留空自动重新生成 |
+| `NAME` | 节点名称 / 显示名 | 仅填写时输出，**留空则不输出**（用脚本默认）；只能包含字母、数字、中文、下划线、中划线、点，**不能有空格或 shell 特殊符号**；最长 40 字符 |
 | `CFIP` | CF 优选域名 / IP | 仅 Argo 启用时输出；留空则不输出（脚本自带默认值） |
 | `CFPORT` | CF 节点对外端口 | 仅 Argo 启用时输出；留空则不输出（脚本自带默认值）；填写时必须为 1–65535 整数 |
 | `HY2_PORT` | hysteria2 端口 | 直连 |
@@ -69,16 +71,17 @@ UUID → CFIP → CFPORT → HY2_PORT → TUIC_PORT → REALITY_PORT → S5_PORT
 
 - **基础配置**（Argo 启用时）：`CFIP` 优选域名 / IP、`CFPORT` 节点端口。两项均**留空即不输出**，由脚本用默认值兜底。`CFIP` 会去除换行 / 制表符并 trim；`CFPORT` 若填写则必须是 1–65535 的整数。`CFPORT` 是 CF 节点**对外**端口，**不参与本地监听端口冲突检测**。
 - **端口**：各直连协议与 Argo 的本地监听端口。
+- **节点名称**（UUID 卡片下的「高级设置」，可选）：`NAME`，即节点显示名。**留空即不输出**，由脚本用默认值兜底；只能包含字母、数字、中文、下划线、中划线、点，不能有空格或 shell 特殊符号，最长 40 字符。
 - **固定隧道**（Argo，可选）：`ARGO_DOMAIN` + `ARGO_AUTH`，两项需同时填写，否则使用临时隧道。
 
 ## 端口 / UUID 校验与提示
 
 - **端口**：必须是 **1–65535 的整数**。`1` 与 `65535` 合法；`0`、`65536`、负数、小数、非数字、含空格（如 `"10000 "`、`" 10000"`）一律非法。
   - 严格性：**不做 trim** —— 含空格即视为非法。
-  - 端口输入框内嵌一个**随机图标按钮**（骰子）：点击即为该输入框随机一个端口，取值范围 **10000–65535**，并会自动避开当前已被占用的端口。`CFPORT` **不提供**随机按钮（它必须是 CF 支持的端口）。
+  - 端口输入框内嵌一个**循环箭头图标按钮**：点击即为该输入框随机一个端口，取值范围 **10000–65535**，并会自动避开当前已被占用的端口。`CFPORT` **不提供**随机按钮（它必须是 CF 支持的端口）。
   - 端口重复（含 `ARGO_PORT`）或越界会标红并禁用复制。
 - **UUID**：必须是标准 8-4-4-4-12 十六进制（大小写均可，接受任意版本位）。格式非法时输入框标红、给出中文提示并禁用复制。留空会自动生成一个随机 UUIDv4 并回填。
-- **错误提示**：端口 / UUID 的错误信息以**独立错误行**呈现（仅在有错误时出现、无错误时不占高度），显示中文原因（如「端口与 Argo 重复」「端口超出有效范围」），避免输入框标红却看不出原因。
+- **错误提示**：端口 / UUID / 节点名称的错误信息以**独立错误行**呈现（仅在有错误时出现、无错误时不占高度），显示中文原因（如「端口与 Argo 重复」「端口超出有效范围」），避免输入框标红却看不出原因。
 
 ## 停止命令
 
@@ -98,7 +101,7 @@ pkill -f '\.tmp/'
 
 ## 持久化
 
-- UUID、各节点配置（含 `CFIP` / `CFPORT`）、主题会静默保存在浏览器本地，刷新不丢失，右上角可「重置」。
+- UUID、节点名称、各节点配置（含 `CFIP` / `CFPORT`）、主题会静默保存在浏览器本地，刷新不丢失，右上角可「重置」。
 
 ## 部署
 

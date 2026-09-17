@@ -36,9 +36,22 @@
 				<div class="port-row">
 					<input id="uuidInput" class="text-input uuid-input" type="text" autocomplete="off"
 						spellcheck="false" placeholder="自动生成的 UUID">
-					<button type="button" id="uuidRandomBtn" class="btn icon-btn">随机生成</button>
+					<button type="button" id="uuidRandomBtn" class="icon-btn"
+						aria-label="重新生成一个随机 UUID" title="重新生成一个随机 UUID"></button>
 				</div>
 				<p id="uuidError" class="field-error" hidden></p>
+				<button type="button" id="uuidAdvToggle" class="adv-toggle" aria-expanded="false"
+					aria-controls="uuidAdvPanel">高级设置</button>
+				<div id="uuidAdvPanel" class="adv-panel" hidden>
+					<div class="field-group">
+						<div class="field">
+							<label class="field-label" for="nameInput">NAME（节点名称）</label>
+							<input id="nameInput" class="text-input" type="text" autocomplete="off"
+								spellcheck="false" maxlength="40" placeholder="例如 甲骨文（留空则用脚本默认）">
+						</div>
+						<p id="nameError" class="field-error" hidden></p>
+					</div>
+				</div>
 			</section>
 
 			<section class="cards" id="cardList" aria-label="已选节点"></section>

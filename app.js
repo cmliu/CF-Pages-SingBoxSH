@@ -13,14 +13,15 @@
 	var SUN_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="4"></circle><path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M6.34 17.66l-1.41 1.41M19.07 4.93l-1.41 1.41"></path></svg>';
 	var MOON_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
 
-	// 图标：端口「随机」= 骰子（内嵌按钮）；「移除节点」= 垃圾桶。
-	// 端口输入框内嵌的「随机」图标：换用循环箭头（rotate-cw），比骰子更易辨识
+	// 图标：端口输入框内嵌「随机」= Lucide rotate-cw 循环箭头（16px，比骰子在 15px 下更易辨识）；
+	// 「移除节点」= 垃圾桶（16px，与循环箭头同尺寸，保证两个 36px 按钮等宽）。
 	var REROLL_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg>';
-	var TRASH_SVG = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>';
+	var TRASH_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>';
 
 	var state = Core.createInitialState();
 	var themeMode = "light";   // 由 resolveTheme() 决定，见下
 	var argoOpen = false;      // Argo「高级设置」折叠状态
+	var uuidAdvOpen = false;   // UUID 卡片「高级设置」（NAME）折叠状态（与 argoOpen 互不影响）
 	var panelOpen = false;     // 添加节点面板是否展开
 	var els = {};
 
@@ -41,6 +42,7 @@
 		try {
 			window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
 				uuid: state.uuid,
+				name: state.name,
 				nodes: state.nodes,
 				theme: themeMode
 			}));
@@ -51,6 +53,10 @@
 		if (!saved || typeof saved !== "object") { return; }
 		if (typeof saved.uuid === "string" && saved.uuid !== "") {
 			state.uuid = saved.uuid;
+		}
+		// 向后兼容：旧的 localStorage 数据没有 name 字段
+		if (typeof saved.name === "string") {
+			state.name = saved.name;
 		}
 		var sn = saved.nodes;
 		if (!sn || typeof sn !== "object") { return; }
@@ -167,6 +173,30 @@
 		refreshOutput();
 		toast("已生成新的 UUID");
 		els.uuidInput.focus();
+	}
+
+	/**
+	 * 把 UUID 卡片的状态同步到 DOM：
+	 *   state.uuid → #uuidInput；state.name → #nameInput；uuidAdvOpen → 折叠面板 / aria-expanded。
+	 * init() 与 resetAll() 各调用一次，避免漏同步。
+	 */
+	function syncUuidSection() {
+		if (els.uuidInput) { els.uuidInput.value = state.uuid || ""; }
+		if (els.nameInput) { els.nameInput.value = state.name || ""; }
+		if (els.uuidAdvPanel) { els.uuidAdvPanel.hidden = !uuidAdvOpen; }
+		if (els.uuidAdvToggle) { els.uuidAdvToggle.setAttribute("aria-expanded", uuidAdvOpen ? "true" : "false"); }
+	}
+
+	// 「高级设置」折叠切换（NAME）
+	function toggleUuidAdv() {
+		uuidAdvOpen = !uuidAdvOpen;
+		syncUuidSection();
+	}
+
+	function handleNameInput() {
+		state.name = els.nameInput.value;
+		save();
+		refreshOutput();
 	}
 
 	/* ---------------- 卡片渲染 ---------------- */
@@ -478,7 +508,9 @@
 	function resetAll() {
 		state = Core.createInitialState();
 		argoOpen = false;
-		els.uuidInput.value = state.uuid;
+		uuidAdvOpen = false;
+		// 复位 UUID 卡片（UUID / NAME 输入框 + 折叠态）——refreshOutput() 随后清空 NAME 错误行
+		syncUuidSection();
 		save();
 		renderCards();
 		refreshOutput();
@@ -518,6 +550,15 @@
 		els.uuidInput.classList.toggle("invalid", uBad);
 		els.uuidInput.setAttribute("aria-invalid", uBad ? "true" : "false");
 		setErrorRow(els.uuidError, uf);
+
+		// NAME 校验态（错误行仅在有错时出现）
+		var nf = result.fields.name;
+		var nBad = !!(nf && nf.ok === false);
+		if (els.nameInput) {
+			els.nameInput.classList.toggle("invalid", nBad);
+			els.nameInput.setAttribute("aria-invalid", nBad ? "true" : "false");
+		}
+		setErrorRow(els.nameError, nf);
 
 		// 端口输入框的校验态（含 Argo）
 		var portKeys = Core.PORT_ORDER.slice();
@@ -699,6 +740,10 @@
 			uuidInput: document.getElementById("uuidInput"),
 			uuidRandomBtn: document.getElementById("uuidRandomBtn"),
 			uuidError: document.getElementById("uuidError"),
+			uuidAdvToggle: document.getElementById("uuidAdvToggle"),
+			uuidAdvPanel: document.getElementById("uuidAdvPanel"),
+			nameInput: document.getElementById("nameInput"),
+			nameError: document.getElementById("nameError"),
 			stopBox: document.getElementById("stopBox"),
 			stopCopyBtn: document.getElementById("stopCopyBtn"),
 			stopFeedback: document.getElementById("stopFeedback"),
@@ -714,8 +759,13 @@
 		// 主题按钮图标 / 无障碍标签 + 文档主题属性
 		applyTheme();
 
-		// 同步 UUID、停止命令到界面
-		els.uuidInput.value = state.uuid || "";
+		// 「随机生成」按钮：注入循环箭头图标 + 文字（图标 aria-hidden，可读名称靠 aria-label）
+		if (els.uuidRandomBtn) {
+			els.uuidRandomBtn.innerHTML = REROLL_SVG + '<span class="icon-btn-text">随机生成</span>';
+		}
+
+		// 同步 UUID 卡片（UUID / NAME 输入框 + 折叠态）、停止命令到界面
+		syncUuidSection();
 		els.stopBox.textContent = Core.STOP_CMD;
 
 		els.addBtn.addEventListener("click", function (e) {
@@ -736,6 +786,8 @@
 
 		els.uuidInput.addEventListener("input", handleUuidInput);
 		els.uuidRandomBtn.addEventListener("click", randomizeUuid);
+		els.uuidAdvToggle.addEventListener("click", toggleUuidAdv);
+		els.nameInput.addEventListener("input", handleNameInput);
 		els.copyBtn.addEventListener("click", doCopy);
 		els.stopCopyBtn.addEventListener("click", doStopCopy);
 		els.themeBtn.addEventListener("click", toggleTheme);

@@ -29,6 +29,13 @@
 	// 标准 UUID：8-4-4-4-12 十六进制，大小写均可，接受任意版本位。
 	var UUID_RE = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/;
 
+	// ---------- 节点名称（NAME）----------
+	// 可选变量，最长 40 字符；留空则完全不输出。
+	var NAME_MAX = 40;
+	// 会破坏 shell 赋值语法的字符（空格 / 引号 / 变量展开 / 管道重定向 / 通配 / 注释等）。
+	// 允许中文等非 ASCII 字符：bash 的 NAME=香港节点 是合法赋值。
+	var NAME_BAD_RE = /[\s'"`$;|&<>(){}[\]*?!#~\\]/;
+
 	// ---------- 节点定义 ----------
 	// 顺序即「添加节点」面板展示顺序（PANEL_ORDER，见下）。
 	// tagClass：气泡配色类名（UDP / TCP / Argo 三类互不相同）。
@@ -49,10 +56,11 @@
 	// 直连端口变量输出顺序（固定，命令里 6 个直连协议的先后）
 	var PORT_ORDER = ["hy2", "tuic", "reality", "s5", "anytls", "anyreality"];
 	// 完整变量输出顺序（固定契约，UUID 永远第一）：
-	// UUID → CFIP → CFPORT → 6 个直连端口 → ARGO_PORT → ARGO_DOMAIN → ARGO_AUTH / DISABLE_ARGO
-	// 其中 CFIP / CFPORT / ARGO_PORT / ARGO_DOMAIN / ARGO_AUTH 仅在 Argo 启用时出现。
+	// UUID → NAME → CFIP → CFPORT → 6 个直连端口 → ARGO_PORT → ARGO_DOMAIN → ARGO_AUTH / DISABLE_ARGO
+	// 其中 NAME 仅在填写时出现（留空不输出）；
+	// CFIP / CFPORT / ARGO_PORT / ARGO_DOMAIN / ARGO_AUTH 仅在 Argo 启用时出现。
 	var VAR_ORDER = [
-		"UUID",
+		"UUID", "NAME",
 		"CFIP", "CFPORT",
 		"HY2_PORT", "TUIC_PORT", "REALITY_PORT", "S5_PORT", "ANYTLS_PORT", "ANYREALITY_PORT",
 		"ARGO_PORT", "ARGO_DOMAIN", "ARGO_AUTH", "DISABLE_ARGO"
@@ -66,7 +74,8 @@
 	 * 说明：这里生成 UUID 是刻意的——保证「首次进入页面即已填好 UUID」，
 	 *     且 createInitialState() 返回的状态天然可通过校验。
 	 *     注意：buildCommand 本身仍是纯函数（不生成 UUID）。
-	 * @returns {{uuid: string, nodes: Object}}
+	 * name 默认为空字符串（可选的节点名称，留空则命令里不输出 NAME）。
+	 * @returns {{uuid: string, name: string, nodes: Object}}
 	 */
 	function createInitialState() {
 		var nodes = {};
@@ -77,7 +86,7 @@
 				nodes[p.key] = { enabled: false, port: "" };
 			}
 		});
-		return { uuid: randomUuid(), nodes: nodes };
+		return { uuid: randomUuid(), name: "", nodes: nodes };
 	}
 
 	/**
@@ -126,6 +135,26 @@
 				reason: "format",
 				message: "UUID 格式不正确，应为 8-4-4-4-12 的十六进制（例如 b7e4b1f0-3c2a-4d9e-8f11-2a3b4c5d6e7f）"
 			};
+		}
+		return { ok: true, value: raw };
+	}
+
+	/**
+	 * 校验节点名称（NAME，可选变量）。
+	 * 规则：与 CFIP / 域名一致，先去换行制表符并 trim；留空合法（不输出该变量）；
+	 *      最长 NAME_MAX 个字符；不允许空格与 shell 特殊符号（避免破坏赋值语法）。
+	 * 允许中文等非 ASCII 字符（bash 的 NAME=香港节点 是合法赋值）。
+	 * @param {string} value
+	 * @returns {{ok:boolean, value?:string, reason?:string, message?:string}}
+	 */
+	function validateName(value) {
+		var raw = cleanValue(value);
+		if (raw === "") { return { ok: true, value: "" }; }
+		if (raw.length > NAME_MAX) {
+			return { ok: false, reason: "toolong", message: "节点名称最长 " + NAME_MAX + " 个字符" };
+		}
+		if (NAME_BAD_RE.test(raw)) {
+			return { ok: false, reason: "format", message: "节点名称不能包含空格或特殊符号（如 ' \" ` $ ; | & < > ( ) { } [ ] * ? ! # ~ \\）" };
 		}
 		return { ok: true, value: raw };
 	}
@@ -199,14 +228,15 @@
 	 * 根据状态生成安装命令（纯函数：不修改入参、同输入同输出、不依赖时间 / 随机 / DOM）。
 	 *
 	 * 变量输出顺序（严格固定）：
-	 *   UUID → CFIP → CFPORT → HY2_PORT → TUIC_PORT → REALITY_PORT → S5_PORT →
+	 *   UUID → NAME → CFIP → CFPORT → HY2_PORT → TUIC_PORT → REALITY_PORT → S5_PORT →
 	 *   ANYTLS_PORT → ANYREALITY_PORT → ARGO_PORT → ARGO_DOMAIN → ARGO_AUTH
 	 *   ，未启用 Argo 时末位为 DISABLE_ARGO=true。
-	 * 其中 CFIP / CFPORT / ARGO_PORT / ARGO_DOMAIN / ARGO_AUTH 仅在 Argo 启用时出现；
+	 * 其中 NAME 仅在填写时出现（留空不输出）；
+	 * CFIP / CFPORT / ARGO_PORT / ARGO_DOMAIN / ARGO_AUTH 仅在 Argo 启用时出现；
 	 * DISABLE_ARGO=true 恒在末位、仅 Argo 删除时出现。
 	 * CFPORT 是 CF 节点对外端口，不参与本地监听端口冲突检测。
 	 *
-	 * @param {{uuid: string, nodes: Object}} state
+	 * @param {{uuid: string, name?: string, nodes: Object}} state
 	 * @returns {{
 	 *   ok: boolean,
 	 *   command: string,
@@ -240,7 +270,19 @@
 			errors.push({ code: "UUID_INVALID", fields: ["uuid"], message: "UUID 无效：" + uuidRes.message });
 		}
 
-		// 1) 基础配置组（仅 Argo 启用时）：CFIP → CFPORT，紧跟 UUID、位于所有端口变量之前
+		// 0.5) NAME —— 可选的节点名称，紧跟 UUID 之后（不加引号）；留空则完全不输出
+		var nameRes = validateName(state && state.name);
+		if (nameRes.ok) {
+			fields.name = { ok: true, message: "" };
+			if (nameRes.value !== "") {
+				vars.push({ name: "NAME", value: nameRes.value, raw: nameRes.value });
+			}
+		} else {
+			fields.name = { ok: false, message: nameRes.message };
+			errors.push({ code: "NAME_INVALID", fields: ["name"], message: "节点名称无效：" + nameRes.message });
+		}
+
+		// 1) 基础配置组（仅 Argo 启用时）：CFIP → CFPORT，紧跟 NAME、位于所有端口变量之前
 		if (hasArgo) {
 			var cfip = cleanValue(argo.cfip);
 			if (cfip) {
@@ -376,6 +418,7 @@
 		PORT_MAX: PORT_MAX,
 		RANDOM_PORT_MIN: RANDOM_PORT_MIN,
 		RANDOM_PORT_MAX: RANDOM_PORT_MAX,
+		NAME_MAX: NAME_MAX,
 		SCRIPT_CMD: SCRIPT_CMD,
 		STOP_CMD: STOP_CMD,
 		PROTOCOLS: PROTOCOLS,
@@ -387,6 +430,7 @@
 		createInitialState: createInitialState,
 		validatePort: validatePort,
 		validateUuid: validateUuid,
+		validateName: validateName,
 		randomPort: randomPort,
 		randomUuid: randomUuid,
 		cleanValue: cleanValue,
