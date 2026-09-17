@@ -97,7 +97,13 @@
 		var a = state.nodes.argo;
 		if (a && a.enabled) {
 			var av = Core.validatePort(a.port);
-			if (av.ok) { out.push(av.value); }
+			if (av.ok) {
+				out.push(av.value);
+			} else {
+				// Argo 端口留空 = 脚本会用默认 8001，故该端口同样视为已占用
+				// （与 core.js 的冲突检测口径保持一致）。
+				out.push(Core.ARGO_DEFAULT_PORT);
+			}
 		}
 		return out;
 	}
@@ -295,6 +301,11 @@
 		input.setAttribute("autocomplete", "off");
 		input.setAttribute("spellcheck", "false");
 		input.setAttribute("maxlength", "5");
+		// Argo 端口默认留空：用 placeholder 提示「留空时脚本会用 8001」，而不是预填一个 8001。
+		// 这样一个字都不改时，命令里就不会出现 ARGO_PORT，首屏命令最短。
+		if (def.kind === "argo") {
+			input.setAttribute("placeholder", String(Core.ARGO_DEFAULT_PORT));
+		}
 		input.value = node.port === undefined || node.port === null ? "" : String(node.port);
 		input.addEventListener("input", function () {
 			state.nodes[key].port = input.value;
@@ -481,9 +492,8 @@
 		if (!node || node.enabled) { return; }
 		node.enabled = true;
 		if (Core.PROTO_MAP[key].kind === "argo") {
-			if (node.port === undefined || node.port === null || node.port === "") {
-				node.port = "8001";
-			}
+			// Argo 端口保持留空（= 脚本默认 8001）；仅当已有残留值时才沿用。
+			if (node.port === undefined || node.port === null) { node.port = ""; }
 			argoOpen = false;
 		} else {
 			node.port = String(Core.randomPort(usedPorts()));

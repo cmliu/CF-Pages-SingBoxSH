@@ -18,6 +18,10 @@
 	// 随机生成端口时的取值范围（仅用于「随机」图标按钮，不是用户限制）。
 	var RANDOM_PORT_MIN = 10000;
 	var RANDOM_PORT_MAX = 65535;
+	// Argo 端的**脚本默认端口**：ARGO_PORT 留空时脚本自身会用 8001。
+	// 页面默认不再预填 8001（输入框用 placeholder 提示），但**冲突检测仍须把这 8001 视为已占用**：
+	// 否则用户把某个直连协议手工填成 8001、同时 Argo 端口留空时，会生成一条实际端口打架的命令。
+	var ARGO_DEFAULT_PORT = 8001;
 
 	// ---------- 固定命令 ----------
 	// 一键安装命令（脚本地址固定）。
@@ -70,9 +74,12 @@
 	PROTOCOLS.forEach(function (p) { PROTO_MAP[p.key] = p; });
 
 	/**
-	 * 生成初始状态：仅 Argo 启用（端口预填 8001），并携带一个随机 UUIDv4。
+	 * 生成初始状态：仅 Argo 启用，端口**留空**（输入框用 placeholder "8001" 提示脚本默认值），
+	 * 并携带一个随机 UUIDv4。
 	 * 说明：这里生成 UUID 是刻意的——保证「首次进入页面即已填好 UUID」，
 	 *     且 createInitialState() 返回的状态天然可通过校验。
+	 *     Argo 端口留空是合法的：不输出 ARGO_PORT，脚本自身用默认 8001，
+	 *     因此首屏命令就是最简的 `UUID=… bash <(curl …)`。
 	 *     注意：buildCommand 本身仍是纯函数（不生成 UUID）。
 	 * name 默认为空字符串（可选的节点名称，留空则命令里不输出 NAME）。
 	 * @returns {{uuid: string, name: string, nodes: Object}}
@@ -81,7 +88,7 @@
 		var nodes = {};
 		PROTOCOLS.forEach(function (p) {
 			if (p.kind === "argo") {
-				nodes[p.key] = { enabled: true, port: "8001", domain: "", auth: "", cfip: "", cfport: "" };
+				nodes[p.key] = { enabled: true, port: "", domain: "", auth: "", cfip: "", cfport: "" };
 			} else {
 				nodes[p.key] = { enabled: false, port: "" };
 			}
@@ -331,11 +338,17 @@
 		});
 
 		// 3) Argo（启用时）：先取端口变量（可留空），再取域名 / 密钥
+		var argoPortIsDefault = false; // 端口留空 → 脚本自身会用 ARGO_DEFAULT_PORT
 		if (hasArgo) {
 			var argoPortRaw = (argo.port === undefined || argo.port === null) ? "" : String(argo.port);
 			if (argoPortRaw === "" || /^\s+$/.test(argoPortRaw)) {
-				// 端口留空合法：不输出 ARGO_PORT，脚本自身会用默认 8001
+				// 端口留空合法：不输出 ARGO_PORT，脚本自身会用默认 8001。
+				// 但**必须把该默认端口登记进 portSeen** —— 「留空」不等于「不占端口」，
+				// 否则用户把某个直连协议手工填成 8001 时会漏掉冲突，生成一条实际打架的命令。
+				argoPortIsDefault = true;
 				fields.argo = { ok: true, message: "" };
+				if (!portSeen[ARGO_DEFAULT_PORT]) { portSeen[ARGO_DEFAULT_PORT] = []; }
+				portSeen[ARGO_DEFAULT_PORT].push("argo");
 			} else {
 				var apRes = validatePort(argoPortRaw);
 				if (!apRes.ok) {
@@ -361,7 +374,13 @@
 			var names = keys.map(function (k) { return PROTO_MAP[k].name; });
 			keys.forEach(function (k, idx) {
 				var others = names.filter(function (_, i) { return i !== idx; });
-				fields[k] = { ok: false, message: "端口与 " + others.join("、") + " 重复" };
+				// Argo 端口留空时输入框本来就是空的，只写「端口与 X 重复」会让人看不懂，
+				// 故说明它「留空 = 默认 8001」这一前提。
+				if (k === "argo" && argoPortIsDefault) {
+					fields[k] = { ok: false, message: "留空时默认用 " + ARGO_DEFAULT_PORT + "，与 " + others.join("、") + " 重复" };
+				} else {
+					fields[k] = { ok: false, message: "端口与 " + others.join("、") + " 重复" };
+				}
 			});
 			errors.push({
 				code: "PORT_CONFLICT",
@@ -418,6 +437,7 @@
 		PORT_MAX: PORT_MAX,
 		RANDOM_PORT_MIN: RANDOM_PORT_MIN,
 		RANDOM_PORT_MAX: RANDOM_PORT_MAX,
+		ARGO_DEFAULT_PORT: ARGO_DEFAULT_PORT,
 		NAME_MAX: NAME_MAX,
 		SCRIPT_CMD: SCRIPT_CMD,
 		STOP_CMD: STOP_CMD,
