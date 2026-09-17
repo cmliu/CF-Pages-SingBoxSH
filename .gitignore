@@ -1,0 +1,12 @@
+# 开发调试资料 / 依赖 / QA 套件 —— 不同步到 GitHub
+.workbuddy/
+node_modules/
+qa/
+
+# 临时与编辑器杂项
+package-lock.json
+.DS_Store
+Thumbs.db
+*.log
+.idea/
+.vscode/

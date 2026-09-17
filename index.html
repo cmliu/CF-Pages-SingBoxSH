@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="">
+
+<head>
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1">
+	<meta name="color-scheme" content="light dark">
+	<title>Sing-box 小钢炮脚本 一键安装命令生成器</title>
+	<link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+	<div class="wrap">
+		<header class="top">
+			<div>
+				<h1 class="title">Sing-box 小钢炮脚本</h1>
+				<p class="subtitle">点「添加节点」勾选你想要的节点，再复制底部的命令，粘到 VPS 上运行即可。全自动安装，不用手工填任何参数。</p>
+			</div>
+			<div class="toolbar">
+				<button type="button" id="themeBtn" class="theme-btn" aria-label="切换主题"></button>
+				<button type="button" id="resetBtn" class="theme-btn reset-btn" aria-label="重置" title="重置"><svg
+						viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
+						stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+						<polyline points="1 4 1 10 7 10"></polyline>
+						<path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"></path>
+					</svg></button>
+			</div>
+		</header>
+
+		<main>
+			<section class="uuid-section" aria-label="UUID">
+				<div class="uuid-head">
+					<label class="field-label" for="uuidInput">UUID</label>
+					<span class="uuid-tag">全局鉴权</span>
+				</div>
+				<div class="port-row">
+					<input id="uuidInput" class="text-input uuid-input" type="text" autocomplete="off"
+						spellcheck="false" placeholder="自动生成的 UUID">
+					<button type="button" id="uuidRandomBtn" class="btn icon-btn">随机生成</button>
+				</div>
+				<p id="uuidError" class="field-error" hidden></p>
+			</section>
+
+			<section class="cards" id="cardList" aria-label="已选节点"></section>
+
+			<div class="add-wrap" id="addWrap">
+				<button type="button" id="addBtn" class="btn btn-primary btn-add" aria-haspopup="true"
+					aria-expanded="false" aria-controls="addPanel">
+					<span class="plus" aria-hidden="true">+</span> 添加节点
+				</button>
+				<div id="addPanel" class="add-panel" role="menu" aria-label="可添加的节点" hidden></div>
+			</div>
+
+			<section class="cmd-block" aria-label="安装命令">
+				<div class="cmd-head">
+					<div class="cmd-title">安装命令</div>
+					<button type="button" id="copyBtn" class="btn btn-primary btn-copy">复制</button>
+				</div>
+				<pre id="cmdBox" class="cmd-box" tabindex="0"></pre>
+				<div id="warnBox" class="warn-box" aria-live="polite"></div>
+				<p id="copyFeedback" class="copy-feedback" role="status" aria-live="polite"></p>
+			</section>
+
+			<section class="cmd-block" aria-label="停止命令">
+				<div class="cmd-head">
+					<div class="cmd-title">停止命令</div>
+					<button type="button" id="stopCopyBtn" class="btn btn-primary btn-copy">复制</button>
+				</div>
+				<pre id="stopBox" class="cmd-box" tabindex="0"></pre>
+				<p id="stopFeedback" class="copy-feedback" role="status" aria-live="polite"></p>
+			</section>
+		</main>
+
+		<footer class="site-footer">
+			<p>基于 <a href="https://github.com/eooce" target="_blank" rel="noopener">eooce（老王）</a> sing-box 脚本二次开发 · 源码
+				<a href="https://github.com/cmliu/CF-Pages-SingBoxSH" target="_blank"
+					rel="noopener">github.com/cmliu/CF-Pages-SingBoxSH</a> · 仅供学习研究</p>
+		</footer>
+	</div>
+
+	<div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+	<script src="core.js"></script>
+	<script src="app.js"></script>
+</body>
+
+</html>
