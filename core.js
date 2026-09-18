@@ -50,12 +50,12 @@
 	// 注意：tagClass 只管气泡配色——「传输分类」的两色系（tag-udp / tag-tcp）与 transport 一致，
 	//       但 Argo 的气泡另用中立的 tag-argo，**不要**据 tagClass 反推 transport。
 	var PROTOCOLS = [
-		{ key: "hy2", name: "hysteria2", kind: "port", varName: "HY2_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "抗丢包、速度猛", panelDesc: "UDP，抗丢包、速度猛" },
-		{ key: "reality", name: "vless-reality", kind: "port", varName: "REALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "最抗封锁", panelDesc: "TCP，最抗封锁" },
-		{ key: "tuic", name: "tuic-v5", kind: "port", varName: "TUIC_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "低延迟", panelDesc: "UDP，低延迟" },
-		{ key: "s5", name: "socks5", kind: "port", varName: "S5_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理", panelDesc: "TCP，通用代理" },
-		{ key: "anytls", name: "anytls", kind: "port", varName: "ANYTLS_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "伪装成普通网页流量", panelDesc: "TCP，伪装成普通网页流量" },
-		{ key: "anyreality", name: "anyreality", kind: "port", varName: "ANYREALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "anytls + reality", panelDesc: "TCP，anytls + reality" },
+		{ key: "hy2", name: "Hysteria2", kind: "port", varName: "HY2_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "抗丢包、速度猛", panelDesc: "UDP，抗丢包、速度猛" },
+		{ key: "reality", name: "VLESS-Reality", kind: "port", varName: "REALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "最抗封锁", panelDesc: "TCP，最抗封锁" },
+		{ key: "tuic", name: "Tuic-v5", kind: "port", varName: "TUIC_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "低延迟", panelDesc: "UDP，低延迟" },
+		{ key: "s5", name: "Socks5", kind: "port", varName: "S5_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理", panelDesc: "TCP，通用代理" },
+		{ key: "anytls", name: "AnyTLS", kind: "port", varName: "ANYTLS_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "伪装成普通网页流量", panelDesc: "TCP，伪装成普通网页流量" },
+		{ key: "anyreality", name: "AnyReality", kind: "port", varName: "ANYREALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "anytls + reality", panelDesc: "TCP，anytls + reality" },
 		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", transport: "tcp", tag: "CDN 中转", tagClass: "tag-argo", desc: "VMess-WS-TLS 隧道", panelDesc: "VMess-WS-TLS 隧道，脚本默认安装" }
 	];
 	// 参与冲突检测的端口空间（固定遍历顺序：先 UDP，再 TCP）。
