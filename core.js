@@ -60,7 +60,7 @@
 		{ key: "s5", name: "Socks5", kind: "port", varName: "S5_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理，无加密易被封", rating: 0.5 },
 		{ key: "anytls", name: "AnyTLS", kind: "port", varName: "ANYTLS_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "抗封锁，值得一试", rating: 4 },
 		{ key: "anyreality", name: "AnyReality", kind: "port", varName: "ANYREALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "抗封锁，需新版客户端", rating: 3 },
-		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", transport: "tcp", tag: "CDN 中转", tagClass: "tag-argo", desc: "走 CF 中转，隐藏真 IP", rating: 3.5 }
+		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", transport: "tcp", tag: "CDN 中转", tagClass: "tag-argo", desc: "VMess-WS-TLS，CF 中转抗封锁", rating: 3.5 }
 	];
 	// 参与冲突检测的端口空间（固定遍历顺序：先 UDP，再 TCP）。
 	var TRANSPORTS = ["udp", "tcp"];
@@ -126,11 +126,14 @@
 	// 直连端口变量输出顺序（固定，命令里 6 个直连协议的先后）
 	var PORT_ORDER = ["hy2", "tuic", "reality", "s5", "anytls", "anyreality"];
 	// 完整变量输出顺序（固定契约，UUID 永远第一）：
-	// UUID → NAME → CFIP → CFPORT → 6 个直连端口 → ARGO_PORT → ARGO_DOMAIN → ARGO_AUTH / DISABLE_ARGO
-	// 其中 NAME 仅在填写时出现（留空不输出）；
+	// UUID → NAME → SHOW_LOG → CFIP → CFPORT → 6 个直连端口 → ARGO_PORT → ARGO_DOMAIN → ARGO_AUTH / DISABLE_ARGO
+	// 其中 NAME / SHOW_LOG 仅在「非默认态」时才出现：
+	//   - NAME 留空不输出；
+	//   - SHOW_LOG 默认开启（= 脚本默认）故不输出，仅关闭日志输出时输出 `SHOW_LOG=false`。
 	// CFIP / CFPORT / ARGO_PORT / ARGO_DOMAIN / ARGO_AUTH 仅在 Argo 启用时出现。
+	// DISABLE_ARGO 恒末位（冻结契约）。
 	var VAR_ORDER = [
-		"UUID", "NAME",
+		"UUID", "NAME", "SHOW_LOG",
 		"CFIP", "CFPORT",
 		"HY2_PORT", "TUIC_PORT", "REALITY_PORT", "S5_PORT", "ANYTLS_PORT", "ANYREALITY_PORT",
 		"ARGO_PORT", "ARGO_DOMAIN", "ARGO_AUTH", "DISABLE_ARGO"
@@ -148,7 +151,8 @@
 	 *     因此首屏命令就是最简的 `UUID=… bash <(curl …)`。
 	 *     注意：buildCommand 本身仍是纯函数（不生成 UUID）。
 	 * name 默认为空字符串（可选的节点名称，留空则命令里不输出 NAME）。
-	 * @returns {{uuid: string, name: string, nodes: Object}}
+	 * showLog 默认为 true（日志输出开关，脚本默认开启 → 命令里不输出 SHOW_LOG）。
+	 * @returns {{uuid: string, name: string, showLog: boolean, nodes: Object}}
 	 */
 	function createInitialState() {
 		var nodes = {};
@@ -159,7 +163,7 @@
 				nodes[p.key] = { enabled: false, port: "" };
 			}
 		});
-		return { uuid: randomUuid(), name: "", nodes: nodes };
+		return { uuid: randomUuid(), name: "", showLog: true, nodes: nodes };
 	}
 
 	/**
@@ -305,10 +309,11 @@
 	 * 根据状态生成安装命令（纯函数：不修改入参、同输入同输出、不依赖时间 / 随机 / DOM）。
 	 *
 	 * 变量输出顺序（严格固定）：
-	 *   UUID → NAME → CFIP → CFPORT → HY2_PORT → TUIC_PORT → REALITY_PORT → S5_PORT →
+	 *   UUID → NAME → SHOW_LOG → CFIP → CFPORT → HY2_PORT → TUIC_PORT → REALITY_PORT → S5_PORT →
 	 *   ANYTLS_PORT → ANYREALITY_PORT → ARGO_PORT → ARGO_DOMAIN → ARGO_AUTH
 	 *   ，未启用 Argo 时末位为 DISABLE_ARGO=true。
 	 * 其中 NAME 仅在填写时出现（留空不输出）；
+	 * SHOW_LOG 仅在**关闭日志输出**时出现（默认开启 → 完全不输出，沿用脚本默认）；
 	 * CFIP / CFPORT / ARGO_PORT / ARGO_DOMAIN / ARGO_AUTH 仅在 Argo 启用时出现；
 	 * DISABLE_ARGO=true 恒在末位、仅 Argo 删除时出现。
 	 * CFPORT 是 CF 节点对外端口，不参与本地监听端口冲突检测。
@@ -370,6 +375,16 @@
 		} else {
 			fields.name = { ok: false, message: nameRes.message };
 			errors.push({ code: "NAME_INVALID", fields: ["name"], message: "节点名称无效：" + nameRes.message });
+		}
+
+		// 0.6) SHOW_LOG —— 日志输出开关，紧跟 NAME、位于 CFIP 之前（与 UI 位置「NAME 下面」对应）。
+		// 脚本默认开启日志输出，故**开启时完全不输出**该变量（首屏命令保持最短）；
+		// 仅当用户关闭日志输出时输出 `SHOW_LOG=false`（用脚本同样认的规范布尔字面量，更专业）。
+		// 判定用 `state.showLog === false`：undefined / null 一律视为开启，
+		// 这样既有的旧测试夹具（未带 showLog 字段）不会变红。
+		// 与 DISABLE_ARGO 同属「仅在非默认态出现」的范式；且是**全局**变量，与 Argo 是否启用无关。
+		if (state && state.showLog === false) {
+			vars.push({ name: "SHOW_LOG", value: "false", raw: "false" });
 		}
 
 		// 1) 基础配置组（仅 Argo 启用时）：CFIP → CFPORT，紧跟 NAME、位于所有端口变量之前

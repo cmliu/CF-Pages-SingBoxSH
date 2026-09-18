@@ -53,6 +53,15 @@
 						</div>
 						<p id="nameError" class="field-error" hidden></p>
 					</div>
+					<div class="field-group switch-field">
+						<span class="field-label" id="showLogLabel">SHOW_LOG（日志输出）</span>
+						<div class="switch-row">
+							<button type="button" id="showLogSwitch" class="switch" role="switch"
+								aria-checked="true" aria-labelledby="showLogLabel"
+								aria-describedby="showLogNote"></button>
+							<p id="showLogNote" class="switch-note">关闭后不写日志文件，低配机器运行更省力</p>
+						</div>
+					</div>
 				</div>
 			</section>
 
@@ -69,20 +78,35 @@
 			<section class="cmd-block" aria-label="安装命令">
 				<div class="cmd-head">
 					<div class="cmd-title">安装命令</div>
-					<button type="button" id="copyBtn" class="btn btn-primary btn-copy">复制</button>
+					<p class="cmd-note">安装完成后，输入 sb 可调出脚本菜单</p>
 				</div>
 				<pre id="cmdBox" class="cmd-box" tabindex="0"></pre>
 				<div id="warnBox" class="warn-box" aria-live="polite"></div>
-				<p id="copyFeedback" class="copy-feedback" role="status" aria-live="polite"></p>
+				<div class="cmd-foot">
+					<p id="copyFeedback" class="copy-feedback" role="status" aria-live="polite"></p>
+					<button type="button" id="copyBtn" class="btn-copy"><svg viewBox="0 0 24 24" width="16"
+							height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+							stroke-linejoin="round" aria-hidden="true" focusable="false">
+							<rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+							<path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+						</svg>复制命令</button>
+				</div>
 			</section>
 
 			<section class="cmd-block" aria-label="停止命令">
 				<div class="cmd-head">
 					<div class="cmd-title">停止命令</div>
-					<button type="button" id="stopCopyBtn" class="btn btn-primary btn-copy">复制</button>
 				</div>
 				<pre id="stopBox" class="cmd-box" tabindex="0"></pre>
-				<p id="stopFeedback" class="copy-feedback" role="status" aria-live="polite"></p>
+				<div class="cmd-foot">
+					<p id="stopFeedback" class="copy-feedback" role="status" aria-live="polite"></p>
+					<button type="button" id="stopCopyBtn" class="btn-copy"><svg viewBox="0 0 24 24" width="16"
+							height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+							stroke-linejoin="round" aria-hidden="true" focusable="false">
+							<rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+							<path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+						</svg>复制命令</button>
+				</div>
 			</section>
 		</main>
 

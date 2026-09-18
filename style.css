@@ -47,6 +47,17 @@
   --warn: #92400e;
   --warn-soft: rgba(146, 64, 14, 0.10);
   --ok: #059669;
+  /* 「复制命令」按钮专用绿色系（**纯色，禁止渐变**）。默认态为透明底 + 绿描边/绿字/绿图标；
+   * 成功态 .is-copied 换成实心绿底 + --ok-on 文字。对比度按 **.cmd-block 的 --card 底**实测：
+   *   --ok-fg #047857 ↔ 白 = 5.48:1（12.5px 文字需 ≥4.5、描边/图标需 ≥3，均达标）；
+   *   hover 叠 --ok-soft 后 ≈ rgb(235,244,242) → 4.90:1 仍达标；
+   *   成功态实心底 #047857 + #fff 文字 = 5.48:1。
+   * （原 --ok #059669 ↔ 白仅 3.76:1，12.5px 文字会破线，故另起 --ok-fg 深一档。）
+   * 深色对应 --ok-fg #34d399 / --ok-soft rgba(52,211,153,.14) / --ok-on #0e1117。
+   * 改此三值必须同步另外两处主题块。 */
+  --ok-fg: #047857;
+  --ok-soft: rgba(4, 120, 87, 0.08);
+  --ok-on: #ffffff;
   --shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 8px 24px rgba(16, 24, 40, 0.06);
   --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.05);
   --cmd-bg: #f3f5fa;
@@ -87,6 +98,9 @@
     --warn: #fbbf24;
     --warn-soft: rgba(251, 191, 36, 0.14);
     --ok: #34d399;
+    --ok-fg: #34d399;
+    --ok-soft: rgba(52, 211, 153, 0.14);
+    --ok-on: #0e1117;
     --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.35);
     --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
     --cmd-bg: #0b0f16;
@@ -127,6 +141,9 @@
   --warn: #fbbf24;
   --warn-soft: rgba(251, 191, 36, 0.14);
   --ok: #34d399;
+  --ok-fg: #34d399;
+  --ok-soft: rgba(52, 211, 153, 0.14);
+  --ok-on: #0e1117;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 30px rgba(0, 0, 0, 0.35);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.35);
   --cmd-bg: #0b0f16;
@@ -573,6 +590,76 @@ h1.title {
 
 .field-label { font-size: 13px; font-weight: 600; color: var(--fg); }
 
+/* ---------- 开关（role="switch"，UUID 卡片高级设置里的 SHOW_LOG）----------
+ * 形态：原生 <button role="switch">（轨道）+ ::after（滑块）。选原生 <button> 的理由：
+ *   浏览器对 <button> 天然支持 Enter / Space 触发 click（无需自己写键盘处理），
+ *   且 role="switch" + aria-checked 是 ARIA 规范里开关的标准表达；视觉态完全由 [aria-checked] 驱动。
+ * 颜色（全部复用既有 token，**不新增 CSS 变量** → 免去三处主题块同步风险），按最差底色实测：
+ *   关闭态：轨道底 --card + 1px --ctl-border 描边（浅 3.37:1 / 深 3.45:1，均 ≥3:1）；
+ *           滑块 --fg-faint（浅 5.04:1 / 深 4.70:1 vs 轨道底，均 ≥3:1）。
+ *   开启态：轨道 --accent，滑块 #fff（浅 6.29:1 / 深 3.13:1 vs 轨道，均 ≥3:1）。
+ * ⚠️ 不许给**开关本体**（.switch）或**开关行**（.switch-row）引入第二种底色（即任何 background 着色）。
+ *    QA 负对照实测（结论保留、归因更正）：
+ *    · 把 hover 底色加在 **.switch-row** 上**不会**破线 —— 因为 .switch 自身有不透明的
+ *      `background: var(--card)`，会把行底色整个盖住（描边实测仍 3.37:1(浅) / 3.45:1(深)）。
+ *    · 真正会破线的是把底色叠到**开关本体**上（即给开关的 :hover 态写一处 background 叠层，
+ *      并把描边改回 --ctl-border）→ 关闭态描边掉到 **2.91:1（浅）/ 2.74:1（深）**，跌破 WCAG 1.4.11 的 3:1。
+ *    故：开关本体保持不透明 --card 底、hover 只改描边 / 滑块；开关行只设 cursor、绝不设 background。
+ * 焦点环：用类选择器 .switch:focus-visible（本项目禁忌是「ID 选择器写 box-shadow 吃掉焦点环」，
+ *    此处不存在 ID 的 box-shadow 覆写，故无需补丁）。 */
+/* 开关字段组（.field-group.switch-field）：标题独占第一行，第二行是「开关 + 注释」。
+ * 「整行可点」的 click 绑在**本组**（.switch-field）上，而非 .switch-row —— 因为标题已移到
+ * .switch-row 之外，若仍绑在行上、点标题就没反应了（功能回退）。故本组 cursor: pointer。
+ * **禁止**给本组 / .switch-row 加 :hover 规则或任何 background —— QA 有静态断言守着
+ * 「.switch-row 不得有 :hover 规则 / 不得拥有背景」，避免引入第二种底色。 */
+.switch-field { cursor: pointer; }
+/* 第二行：开关在左、注释紧挨其右并占据剩余宽度（flex:1）。
+ * 去掉了旧版的 justify-content: space-between（那会把注释顶到最右端、离开关很远）；
+ * 改为 gap 8px 紧凑排列；开关与注释**垂直居中**对齐（注释折行时开关居中于整块注释）。 */
+.switch-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+
+.switch {
+  appearance: none;
+  position: relative;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--ctl-border);
+  border-radius: 999px;
+  background: var(--card);
+  cursor: pointer;
+  transition: background-color .15s ease, border-color .15s ease;
+}
+.switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--fg-faint);
+  transition: transform .15s ease, background-color .15s ease;
+}
+.switch:hover { border-color: var(--accent); }
+.switch:hover::after { background: var(--accent); }
+.switch[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
+.switch[aria-checked="true"]:hover { border-color: var(--accent); }
+.switch[aria-checked="true"]:hover::after { background: #fff; }
+.switch[aria-checked="true"]::after { transform: translateX(20px); background: #fff; }
+/* ⚠️ 深色下白滑块 vs --accent（#7c86ff）= 3.13:1，距 WCAG 1.4.11 的 3:1 底线仅高 0.13，余量极薄。
+ *    若改 --accent（任一处主题块）必须重测此项；一旦跌破 3:1 即破线。
+ *    （刻意保留白滑块而非 var(--card)：亮轨道 + 白滑块是通用开关观感，深色滑块会让小白认不出这是开关。） */
+.switch:focus-visible { outline: none; box-shadow: var(--focus); }
+
+/* 开关右侧小字注释：视觉参数对齐既有的 .argo-hint（12.5px / --fg-faint）。
+ * flex:1 1 auto + min-width:0 让它吃掉开关右侧的全部剩余宽度（紧挨开关），并在窄屏**正常换行**
+ * （320px 下会折成 2 行，允许；因 min-width:0 不会把 .switch-row 撑出横向溢出）。
+ * ⚠️ 新起语义化类名 .switch-note，**不复用**任何早期的常驻提示行类名
+ *    （那些旧名字在别处有静态断言守着，写进注释也会把它们连累红）。 */
+.switch-note { margin: 0; font-size: 12.5px; color: var(--fg-faint); flex: 1 1 auto; min-width: 0; }
+
 .text-input {
   width: 100%;
   font: inherit;
@@ -748,24 +835,72 @@ h1.title {
 }
 .cmd-block + .cmd-block { margin-top: 14px; }
 
+/* 命令区标题行：只放「标题 + 小字提示」（复制按钮已移到右下角的 .cmd-foot）。
+ * 标题与提示同行、基线对齐；窄屏（可用宽度不足时）小字提示自然换行到标题下方。 */
 .cmd-head {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 4px 8px;
   margin-bottom: 12px;
 }
 .cmd-title { font-size: 14px; font-weight: 700; letter-spacing: 0.01em; }
+/* 「安装命令」标题后的说明性小字：字号小于标题（14px），颜色用 --fg-faint
+ * （对 --card 浅色 5.04:1 / 深色 4.70:1，达标），不抢标题。新起语义化类名 .cmd-note，
+ * **不得**复活本项目早年移除的那些常驻提示行类名（它们在别处有静态断言守着，
+ * 连写进注释都会把套件连累红 —— 故此处刻意不点名）。 */
+.cmd-note { margin: 0; font-size: 12.5px; color: var(--fg-faint); }
 
-.btn-copy { padding: 9px 16px; font-size: 13.5px; }
-/* 复制成功态改用绿色渐变，同样是「透明边框 + 渐变底」，与 .btn-primary 同理：
-   本规则的 `background:` 简写会重置 background-origin，故必须在此显式补上，避免复制态重新漏光。 */
-.btn-copy.is-copied {
-  background: linear-gradient(96deg, var(--ok), #10b981);
-  background-origin: border-box;
-  background-repeat: no-repeat;
-  box-shadow: none;
+/* 底部行：左「复制反馈」右「复制命令」按钮 —— 让按钮落在 .cmd-block 的**右下角**，
+ * 且右边缘与命令框右边缘对齐（两者同处 .cmd-block 的内容宽度右端）。
+ * 反馈行 flex:1 吃掉左侧空间，按钮 flex:0 0 auto 保持自身宽度、不被反馈文字挤压。 */
+.cmd-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-top: 10px;
 }
+.cmd-foot .copy-feedback { margin: 0; flex: 1 1 auto; min-width: 0; }
+.cmd-foot .btn-copy { flex: 0 0 auto; }
+
+/* 复制按钮 = 绿色描边 36px 按钮（指标复刻 .card-btn「移除节点」，仅换色为绿）。
+ * **纯色**（透明底 + 绿描边/绿字/绿图标），**不含 linear-gradient** —— 彻底避开本项目历史上
+ * 反复出现的「渐变按钮边缘镜像色带（用户叫『漏光』）」那类 bug，也因此本按钮**不再需要**
+ * `.btn`/`background-origin` 那套渐变宿主补丁（它是独立控件，不再叠加 .btn / .btn-primary）。
+ * 对比度（12.5px 文字需 ≥4.5、描边/图标 ≥3，底色为 .cmd-block 的 --card）：
+ *   浅色 --ok-fg #047857 ↔ #ffffff = 5.48:1；hover 叠 --ok-soft ≈ rgb(235,244,242) → 4.90:1；
+ *   深色 --ok-fg #34d399 ↔ #171b23 = 8.97:1；hover 叠 --ok-soft ≈ rgb(27,53,52) → 6.80:1。
+ * 成功态 .is-copied = 实心绿底（--ok-fg）+ --ok-on 文字/图标（图标随 currentColor）：
+ *   浅色 #047857 + #fff = 5.48:1；深色 #34d399 + #0e1117 = 8.97:1（两组均达标）。
+ * 成功态还换 Lucide check 图标 + 文案「已复制」——**不只靠颜色**传达状态（无障碍）。 */
+.btn-copy {
+  appearance: none;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 600;
+  line-height: 1;
+  height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--ok-fg);
+  border-radius: 10px;
+  background: transparent;
+  color: var(--ok-fg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color .15s ease, border-color .15s ease, background .15s ease;
+}
+.btn-copy svg { display: block; flex: 0 0 auto; }
+.btn-copy:hover { background: var(--ok-soft); border-color: var(--ok-fg); color: var(--ok-fg); }
+.btn-copy:focus-visible { outline: none; box-shadow: var(--focus); }
+/* 成功态：实心绿底 + --ok-on 文字/图标。`.is-copied:hover` 单独列出，避免被上面 `.btn-copy:hover`
+ * 的淡绿底盖掉（点完按钮鼠标仍悬停其上，两态会同时命中）。 */
+.btn-copy.is-copied,
+.btn-copy.is-copied:hover { background: var(--ok-fg); border-color: var(--ok-fg); color: var(--ok-on); }
 .btn-copy[disabled] { cursor: not-allowed; opacity: 0.5; filter: grayscale(0.3); box-shadow: none; transform: none; }
 
 .cmd-box {
@@ -793,6 +928,10 @@ h1.title {
 .t-bash { color: var(--t-bash); font-weight: 600; }
 
 .warn-box { margin: 10px 0 0; display: flex; flex-direction: column; gap: 6px; }
+/* 空的警告容器必须真正消失：它有 margin-top:10px，只存在于「安装命令」区，
+ * 若空着也占位，会让该区的「命令框 → 复制命令按钮」比「停止命令」区多 10px
+ * （用户 2026-09-18 报告两区按钮上下间距不一致即此因）。app.js 在无警告时置 hidden。 */
+.warn-box[hidden] { display: none; }
 .warn-line {
   margin: 0;
   font-size: 13px;
@@ -899,8 +1038,9 @@ h1.title {
   .card { border-radius: 14px; padding: 14px; }
   .btn-add { padding: 12px 14px; }
   .cmd-block { padding: 14px; border-radius: 14px; }
-  .cmd-head { flex-direction: column; align-items: stretch; gap: 10px; }
-  .btn-copy { width: 100%; }
+  /* 「复制命令」按钮始终停在 .cmd-block 右下角、不拉满整行（用户要求），故这里**不再**对
+   * .cmd-head 做纵向堆叠、也**不再**给 .btn-copy 写 width:100% —— .cmd-head 的 flex-wrap
+   * 已能让「标题 + 小字提示」在窄屏自然换行。 */
   .cmd-box { font-size: 12px; padding: 12px; }
   .add-panel { left: 0; right: 0; }
 }

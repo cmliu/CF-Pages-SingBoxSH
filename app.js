@@ -17,6 +17,12 @@
 	// 「移除节点」= 垃圾桶（16px，与循环箭头同尺寸，保证两个 36px 按钮等宽）。
 	var REROLL_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg>';
 	var TRASH_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>';
+	// 「复制命令」按钮的两个状态图标（Lucide copy / check，16px，stroke=currentColor）：
+	// 成功态换成对勾 —— 让状态**不只靠颜色**表达（无障碍要求），并同时改文案「复制命令」→「已复制」。
+	var COPY_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path></svg>';
+	var CHECK_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false"><path d="M20 6 9 17l-5-5"></path></svg>';
+	var COPY_LABEL = "复制命令";   // 默认态文案（与 index.html 内联默认一致；app.js 为运行时唯一真源）
+	var COPIED_LABEL = "已复制"; // 成功态文案（约 1.8s 后复原）
 
 	/* ---------- 推荐指数星星（纯 SVG，跨设备/字体一致） ----------
 	 * 为什么不用「★★★★☆」这类字符：星形的字形在各平台/字体里差异很大（有的圆角有的尖角、
@@ -87,6 +93,7 @@
 			window.localStorage.setItem(STORAGE_KEY, JSON.stringify({
 				uuid: state.uuid,
 				name: state.name,
+				showLog: state.showLog,
 				nodes: state.nodes,
 				theme: themeMode
 			}));
@@ -101,6 +108,11 @@
 		// 向后兼容：旧的 localStorage 数据没有 name 字段
 		if (typeof saved.name === "string") {
 			state.name = saved.name;
+		}
+		// 向后兼容：旧的 localStorage 数据没有 showLog 字段 → 保持默认开启（true）。
+		// 只在确为布尔值时才覆盖，避免脏值（如字符串 "false"）把开关带偏。
+		if (typeof saved.showLog === "boolean") {
+			state.showLog = saved.showLog;
 		}
 		var sn = saved.nodes;
 		if (!sn || typeof sn !== "object") { return; }
@@ -237,12 +249,15 @@
 
 	/**
 	 * 把 UUID 卡片的状态同步到 DOM：
-	 *   state.uuid → #uuidInput；state.name → #nameInput；uuidAdvOpen → 折叠面板 / aria-expanded。
+	 *   state.uuid → #uuidInput；state.name → #nameInput；state.showLog → #showLogSwitch 的 aria-checked；
+	 *   uuidAdvOpen → 折叠面板 / aria-expanded。
 	 * init() 与 resetAll() 各调用一次，避免漏同步。
+	 * 开关的视觉态完全由 CSS 的 [aria-checked="true"] 驱动，故这里只需同步 aria-checked 一个属性。
 	 */
 	function syncUuidSection() {
 		if (els.uuidInput) { els.uuidInput.value = state.uuid || ""; }
 		if (els.nameInput) { els.nameInput.value = state.name || ""; }
+		if (els.showLogSwitch) { els.showLogSwitch.setAttribute("aria-checked", state.showLog === false ? "false" : "true"); }
 		if (els.uuidAdvPanel) { els.uuidAdvPanel.hidden = !uuidAdvOpen; }
 		if (els.uuidAdvToggle) { els.uuidAdvToggle.setAttribute("aria-expanded", uuidAdvOpen ? "true" : "false"); }
 	}
@@ -256,6 +271,20 @@
 	function handleNameInput() {
 		state.name = els.nameInput.value;
 		save();
+		refreshOutput();
+	}
+
+	/**
+	 * SHOW_LOG（日志输出）开关切换。
+	 * 语义（与 core.js 一致）：开启（默认）= 命令里完全不输出 SHOW_LOG（沿用脚本默认）；
+	 * 关闭 = 输出 `SHOW_LOG=false`（低配机器更省力）。
+	 * 原生 <button role="switch"> 已内建 Enter / Space → click，故无需额外键盘处理。
+	 * 视觉态由 [aria-checked] 驱动，经 syncUuidSection() 统一回写。
+	 */
+	function toggleShowLog() {
+		state.showLog = state.showLog === false ? true : false;
+		save();
+		syncUuidSection();
 		refreshOutput();
 	}
 
@@ -706,9 +735,15 @@
 			setCopyDisabled(true);
 		}
 
-		// 警告提示
+		// 警告提示 —— 与 .field-error 同一条纪律：**仅在有警告时出现，无警告时不占高度**。
+		// ⚠️ 必须给空的 #warnBox 加 hidden（CSS 里 .warn-box[hidden]{display:none}）：
+		//     它自带 margin-top:10px，若空着也常驻 DOM，只存在于「安装命令」区的它会让
+		//     该区「命令框 → 复制命令按钮」多出 10px —— 两个命令区的按钮上下间距就对不齐了
+		//     （用户 2026-09-18 报告「两个按钮的上下间距不一致」，实测 安装命令 20px / 停止命令 10px）。
+		var hasWarn = !!(result.errors && result.errors.length);
 		els.warnBox.textContent = "";
-		if (!result.ok) {
+		els.warnBox.hidden = !hasWarn;
+		if (hasWarn) {
 			result.errors.forEach(function (e) {
 				els.warnBox.appendChild(el("p", "warn-line", e.message));
 			});
@@ -753,19 +788,30 @@
 		});
 	}
 
+	/**
+	 * 设置「复制命令」按钮的状态：copied=false → copy 图标 +「复制命令」；
+	 * copied=true → check 图标 +「已复制」并加 .is-copied（实心绿底）。
+	 * 图标 aria-hidden、文字是可见文本 → 按钮可访问名称始终正确，且状态不只靠颜色表达。
+	 * @param {HTMLElement} btn
+	 * @param {boolean} copied
+	 */
+	function setCopyState(btn, copied) {
+		if (!btn) { return; }
+		btn.classList.toggle("is-copied", !!copied);
+		btn.innerHTML = (copied ? CHECK_SVG : COPY_SVG) + (copied ? COPIED_LABEL : COPY_LABEL);
+	}
+
 	var copyTimer = null;
 	function doCopy() {
 		var result = Core.buildCommand(state);
 		if (!result.ok) { return; }
 		copyText(result.command).then(function (success) {
 			if (success) {
-				els.copyBtn.textContent = "已复制";
-				els.copyBtn.classList.add("is-copied");
+				setCopyState(els.copyBtn, true);
 				els.copyFeedback.textContent = "命令已复制到剪贴板，去 VPS 粘贴运行吧。";
 				if (copyTimer) { window.clearTimeout(copyTimer); }
 				copyTimer = window.setTimeout(function () {
-					els.copyBtn.textContent = "复制";
-					els.copyBtn.classList.remove("is-copied");
+					setCopyState(els.copyBtn, false);
 				}, 1800);
 			} else {
 				els.copyFeedback.textContent = "复制失败，请手动选中命令后复制。";
@@ -777,13 +823,11 @@
 	function doStopCopy() {
 		copyText(Core.STOP_CMD).then(function (success) {
 			if (success) {
-				els.stopCopyBtn.textContent = "已复制";
-				els.stopCopyBtn.classList.add("is-copied");
+				setCopyState(els.stopCopyBtn, true);
 				els.stopFeedback.textContent = "停止命令已复制。";
 				if (stopTimer) { window.clearTimeout(stopTimer); }
 				stopTimer = window.setTimeout(function () {
-					els.stopCopyBtn.textContent = "复制";
-					els.stopCopyBtn.classList.remove("is-copied");
+					setCopyState(els.stopCopyBtn, false);
 				}, 1800);
 			} else {
 				els.stopFeedback.textContent = "复制失败，请手动选中命令后复制。";
@@ -856,6 +900,8 @@
 			uuidAdvPanel: document.getElementById("uuidAdvPanel"),
 			nameInput: document.getElementById("nameInput"),
 			nameError: document.getElementById("nameError"),
+			showLogSwitch: document.getElementById("showLogSwitch"),
+			showLogField: document.querySelector("#uuidAdvPanel .switch-field"),
 			stopBox: document.getElementById("stopBox"),
 			stopCopyBtn: document.getElementById("stopCopyBtn"),
 			stopFeedback: document.getElementById("stopFeedback"),
@@ -881,6 +927,11 @@
 		syncUuidSection();
 		els.stopBox.textContent = Core.STOP_CMD;
 
+		// 「复制命令」按钮默认态 = copy 图标 +「复制命令」。app.js 是运行时唯一真源，
+		// 这里归一化一次，抹平 index.html 里为「无 JS 也能看懂」而内联的默认标记。
+		setCopyState(els.copyBtn, false);
+		setCopyState(els.stopCopyBtn, false);
+
 		els.addBtn.addEventListener("click", function (e) {
 			e.stopPropagation();
 			if (panelOpen) { closePanel(true); } else { openPanel(); }
@@ -901,6 +952,19 @@
 		els.uuidRandomBtn.addEventListener("click", randomizeUuid);
 		els.uuidAdvToggle.addEventListener("click", toggleUuidAdv);
 		els.nameInput.addEventListener("input", handleNameInput);
+		if (els.showLogSwitch) { els.showLogSwitch.addEventListener("click", toggleShowLog); }
+		// 整个 SHOW_LOG 字段组可点：点标题文字 / 点开关 / 点注释 / 点组内空白都能切换
+		// （小白友好，与其它输入框「点标签即聚焦」一致）。
+		// ⚠️ click 绑在**外层 .switch-field** 上（不是 .switch-row）——标题现在独占第一行、位于
+		//     .switch-row 之外，若仍绑在行上，点标题就没反应了（功能回退）。
+		// ⚠️ 开关本体自带 click（切换一次）；事件冒泡到本组会再次触发 → 若不放行，点一次会让开关
+		//     连切两次、看起来「没反应」。故按 target 精确放行：只有点非按钮区域才走这里。
+		if (els.showLogField) {
+			els.showLogField.addEventListener("click", function (e) {
+				if (e.target === els.showLogSwitch) { return; }
+				toggleShowLog();
+			});
+		}
 		els.copyBtn.addEventListener("click", doCopy);
 		els.stopCopyBtn.addEventListener("click", doStopCopy);
 		els.themeBtn.addEventListener("click", toggleTheme);
