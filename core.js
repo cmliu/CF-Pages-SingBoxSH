@@ -42,16 +42,24 @@
 
 	// ---------- 节点定义 ----------
 	// 顺序即「添加节点」面板展示顺序（PANEL_ORDER，见下）。
-	// tagClass：气泡配色类名（UDP / TCP / Argo 三类互不相同）。
+	// tagClass：气泡配色类名（UDP / TCP / Argo 三类互不相同，纯视觉）。
+	// transport：**端口空间分类**，决定冲突检测口径——UDP 与 TCP 是两套独立的端口空间，
+	//           只有「同一 transport + 同一端口号」才算端口冲突。
+	//           分组口径：hy2 / tuic = udp；reality / s5 / anytls / anyreality = tcp；
+	//           Argo（cloudflared VMess-WS-TLS 隧道本地入站）也是 **tcp**。
+	// 注意：tagClass 只管气泡配色——「传输分类」的两色系（tag-udp / tag-tcp）与 transport 一致，
+	//       但 Argo 的气泡另用中立的 tag-argo，**不要**据 tagClass 反推 transport。
 	var PROTOCOLS = [
-		{ key: "hy2", name: "hysteria2", kind: "port", varName: "HY2_PORT", tag: "UDP 直连", tagClass: "tag-udp", desc: "抗丢包、速度猛", panelDesc: "UDP，抗丢包、速度猛" },
-		{ key: "reality", name: "vless-reality", kind: "port", varName: "REALITY_PORT", tag: "TCP 直连", tagClass: "tag-tcp", desc: "最抗封锁", panelDesc: "TCP，最抗封锁" },
-		{ key: "tuic", name: "tuic-v5", kind: "port", varName: "TUIC_PORT", tag: "UDP 直连", tagClass: "tag-udp", desc: "低延迟", panelDesc: "UDP，低延迟" },
-		{ key: "s5", name: "socks5", kind: "port", varName: "S5_PORT", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理", panelDesc: "TCP，通用代理" },
-		{ key: "anytls", name: "anytls", kind: "port", varName: "ANYTLS_PORT", tag: "TCP 直连", tagClass: "tag-tcp", desc: "伪装成普通网页流量", panelDesc: "TCP，伪装成普通网页流量" },
-		{ key: "anyreality", name: "anyreality", kind: "port", varName: "ANYREALITY_PORT", tag: "TCP 直连", tagClass: "tag-tcp", desc: "anytls + reality", panelDesc: "TCP，anytls + reality" },
-		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", tag: "CDN 中转", tagClass: "tag-argo", desc: "VMess-WS-TLS 隧道", panelDesc: "VMess-WS-TLS 隧道，脚本默认安装" }
+		{ key: "hy2", name: "hysteria2", kind: "port", varName: "HY2_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "抗丢包、速度猛", panelDesc: "UDP，抗丢包、速度猛" },
+		{ key: "reality", name: "vless-reality", kind: "port", varName: "REALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "最抗封锁", panelDesc: "TCP，最抗封锁" },
+		{ key: "tuic", name: "tuic-v5", kind: "port", varName: "TUIC_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "低延迟", panelDesc: "UDP，低延迟" },
+		{ key: "s5", name: "socks5", kind: "port", varName: "S5_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理", panelDesc: "TCP，通用代理" },
+		{ key: "anytls", name: "anytls", kind: "port", varName: "ANYTLS_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "伪装成普通网页流量", panelDesc: "TCP，伪装成普通网页流量" },
+		{ key: "anyreality", name: "anyreality", kind: "port", varName: "ANYREALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "anytls + reality", panelDesc: "TCP，anytls + reality" },
+		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", transport: "tcp", tag: "CDN 中转", tagClass: "tag-argo", desc: "VMess-WS-TLS 隧道", panelDesc: "VMess-WS-TLS 隧道，脚本默认安装" }
 	];
+	// 参与冲突检测的端口空间（固定遍历顺序：先 UDP，再 TCP）。
+	var TRANSPORTS = ["udp", "tcp"];
 
 	// 面板展示顺序（「添加节点」下拉）
 	var PANEL_ORDER = ["hy2", "reality", "tuic", "s5", "anytls", "anyreality", "argo"];
@@ -169,7 +177,11 @@
 	/**
 	 * 生成一个随机可用端口，自动避开 exclude 中的端口。
 	 * 取值始终落在 [RANDOM_PORT_MIN, RANDOM_PORT_MAX]（10000–65535）。
-	 * @param {Array<number|string>} [exclude]
+	 *
+	 * 约定：调用方（app.js 的 usedPorts()）传入的是**全部**已占用端口，**不分传输方式**
+	 * （即 UDP 与 TCP 的端口混在一起）。随机结果不得落在任何已占用端口上——
+	 * 即便某端口号在 UDP / TCP 上可合法共存，随机时也一并避开，避免出现「看起来重复」的端口。
+	 * @param {Array<number|string>} [exclude] 全部已占用端口（跨传输方式）
 	 * @param {function():number} [rng] 便于测试注入的随机源
 	 * @returns {number}
 	 */
@@ -242,6 +254,8 @@
 	 * CFIP / CFPORT / ARGO_PORT / ARGO_DOMAIN / ARGO_AUTH 仅在 Argo 启用时出现；
 	 * DISABLE_ARGO=true 恒在末位、仅 Argo 删除时出现。
 	 * CFPORT 是 CF 节点对外端口，不参与本地监听端口冲突检测。
+	 * 端口冲突检测**按传输方式分组**：UDP（hy2 / tuic）与 TCP（reality / s5 / anytls / anyreality / Argo）
+	 * 是两套独立的端口空间，只有「同一传输方式 + 同一端口号」才判为 PORT_CONFLICT。
 	 *
 	 * @param {{uuid: string, name?: string, nodes: Object}} state
 	 * @returns {{
@@ -262,7 +276,18 @@
 		var fields = {};
 		var vars = [];
 		var parts = [];
-		var portSeen = {}; // port(String) -> [keys]
+		// 端口占用登记表：**按传输方式分组**（UDP / TCP 是两套独立的端口空间）。
+		// 结构：transport -> { port(String) -> [keys] }；只有「同一 transport + 同一端口号」
+		// 才判为冲突，因此 hy2(UDP) 与 reality(TCP) 用同一个端口号是合法的。
+		var portSeen = {};
+		TRANSPORTS.forEach(function (t) { portSeen[t] = {}; });
+		// 登记一个已占用端口到其所属传输分组（内部辅助，无副作用，仅供本函数使用）。
+		function notePort(transport, portValue, key) {
+			var group = portSeen[transport];
+			var ps = String(portValue);
+			if (!group[ps]) { group[ps] = []; }
+			group[ps].push(key);
+		}
 
 		var argo = nodes.argo;
 		var hasArgo = !!(argo && argo.enabled);
@@ -332,8 +357,8 @@
 				return;
 			}
 			fields[key] = { ok: true, message: "" };
-			if (!portSeen[res.value]) { portSeen[res.value] = []; }
-			portSeen[res.value].push(key);
+			// 按该协议所属的传输方式归组登记（hy2/tuic → udp；其余直连 → tcp）。
+			notePort(def.transport, res.value, key);
 			vars.push({ name: def.varName, value: String(res.value), raw: String(res.value) });
 		});
 
@@ -343,12 +368,12 @@
 			var argoPortRaw = (argo.port === undefined || argo.port === null) ? "" : String(argo.port);
 			if (argoPortRaw === "" || /^\s+$/.test(argoPortRaw)) {
 				// 端口留空合法：不输出 ARGO_PORT，脚本自身会用默认 8001。
-				// 但**必须把该默认端口登记进 portSeen** —— 「留空」不等于「不占端口」，
-				// 否则用户把某个直连协议手工填成 8001 时会漏掉冲突，生成一条实际打架的命令。
+				// 但**必须把该默认端口登记进 TCP 分组** —— 「留空」不等于「不占端口」，
+				// 否则用户把某个 TCP 直连协议手工填成 8001 时会漏掉冲突，生成一条实际打架的命令。
+				// （Argo 用的是 TCP，故只与 TCP 直连协议争用该端口，不与 UDP 冲突。）
 				argoPortIsDefault = true;
 				fields.argo = { ok: true, message: "" };
-				if (!portSeen[ARGO_DEFAULT_PORT]) { portSeen[ARGO_DEFAULT_PORT] = []; }
-				portSeen[ARGO_DEFAULT_PORT].push("argo");
+				notePort(PROTO_MAP.argo.transport, ARGO_DEFAULT_PORT, "argo");
 			} else {
 				var apRes = validatePort(argoPortRaw);
 				if (!apRes.ok) {
@@ -360,32 +385,36 @@
 					});
 				} else {
 					fields.argo = { ok: true, message: "" };
-					if (!portSeen[apRes.value]) { portSeen[apRes.value] = []; }
-					portSeen[apRes.value].push("argo");
+					notePort(PROTO_MAP.argo.transport, apRes.value, "argo");
 					vars.push({ name: "ARGO_PORT", value: String(apRes.value), raw: String(apRes.value) });
 				}
 			}
 		}
 
-		// 4) 端口冲突：任意两个已启用协议（含 Argo 端口，不含 CFPORT）端口相同
-		Object.keys(portSeen).forEach(function (portStr) {
-			var keys = portSeen[portStr];
-			if (keys.length < 2) { return; }
-			var names = keys.map(function (k) { return PROTO_MAP[k].name; });
-			keys.forEach(function (k, idx) {
-				var others = names.filter(function (_, i) { return i !== idx; });
-				// Argo 端口留空时输入框本来就是空的，只写「端口与 X 重复」会让人看不懂，
-				// 故说明它「留空 = 默认 8001」这一前提。
-				if (k === "argo" && argoPortIsDefault) {
-					fields[k] = { ok: false, message: "留空时默认用 " + ARGO_DEFAULT_PORT + "，与 " + others.join("、") + " 重复" };
-				} else {
-					fields[k] = { ok: false, message: "端口与 " + others.join("、") + " 重复" };
-				}
-			});
-			errors.push({
-				code: "PORT_CONFLICT",
-				fields: keys.slice(),
-				message: "端口冲突：" + names.join(" 与 ") + " 都使用了端口 " + portStr + "，请改成不同的端口。"
+		// 4) 端口冲突：仅在**同一传输方式**内检测——UDP 与 TCP 是两套独立端口空间，
+		//    同号合法共存。含 Argo 端口（TCP）、不含 CFPORT（CF 对外端口，不参与本地监听冲突）。
+		TRANSPORTS.forEach(function (transport) {
+			var group = portSeen[transport];
+			Object.keys(group).forEach(function (portStr) {
+				var keys = group[portStr];
+				if (keys.length < 2) { return; }
+				var names = keys.map(function (k) { return PROTO_MAP[k].name; });
+				keys.forEach(function (k, idx) {
+					var others = names.filter(function (_, i) { return i !== idx; });
+					// Argo 端口留空时输入框本来就是空的，只写「端口与 X 重复」会让人看不懂，
+					// 故说明它「留空 = 默认 8001」这一前提。
+					if (k === "argo" && argoPortIsDefault) {
+						fields[k] = { ok: false, message: "留空时默认用 " + ARGO_DEFAULT_PORT + "，与 " + others.join("、") + " 重复" };
+					} else {
+						fields[k] = { ok: false, message: "端口与 " + others.join("、") + " 重复" };
+					}
+				});
+				errors.push({
+					code: "PORT_CONFLICT",
+					fields: keys.slice(),
+					// 文案带上传输方式，便于用户理解「为什么同号不报错」。
+					message: "端口冲突：" + names.join(" 与 ") + " 都使用了 " + transport.toUpperCase() + " 端口 " + portStr + "，请改成不同的端口。"
+				});
 			});
 		});
 

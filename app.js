@@ -85,6 +85,13 @@
 		return node;
 	}
 
+	/**
+	 * 收集当前**全部**已占用端口，供端口随机按钮 / addNode() 避开。
+	 * 刻意**不按传输方式过滤**：UDP 与 TCP 虽可在同号端口合法共存，但随机时应避开
+	 * 任何已用端口（哪怕只是另一种传输方式上用过），以免生成「看起来重复」的端口。
+	 * Argo 端口留空时补上脚本默认的 ARGO_DEFAULT_PORT（与 core.js 冲突口径一致）。
+	 * @returns {Array<number>}
+	 */
 	function usedPorts() {
 		var out = [];
 		Core.PORT_ORDER.forEach(function (key) {
