@@ -52,13 +52,13 @@
 	// 注意：tagClass 只管气泡配色——「传输分类」的两色系（tag-udp / tag-tcp）与 transport 一致，
 	//       但 Argo 的气泡另用中立的 tag-argo，**不要**据 tagClass 反推 transport。
 	var PROTOCOLS = [
-		{ key: "hy2", name: "Hysteria2", kind: "port", varName: "HY2_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "抗丢包、速度猛" },
-		{ key: "reality", name: "VLESS-Reality", kind: "port", varName: "REALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "最抗封锁" },
-		{ key: "tuic", name: "Tuic-v5", kind: "port", varName: "TUIC_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "低延迟" },
-		{ key: "s5", name: "Socks5", kind: "port", varName: "S5_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理" },
-		{ key: "anytls", name: "AnyTLS", kind: "port", varName: "ANYTLS_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "伪装成普通网页流量" },
-		{ key: "anyreality", name: "AnyReality", kind: "port", varName: "ANYREALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "anytls + reality" },
-		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", transport: "tcp", tag: "CDN 中转", tagClass: "tag-argo", desc: "VMess-WS-TLS 隧道" }
+		{ key: "hy2", name: "Hysteria2", kind: "port", varName: "HY2_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "暴力发包，劣质线路首选" },
+		{ key: "reality", name: "VLESS-Reality", kind: "port", varName: "REALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "最抗封锁，优质线路首选" },
+		{ key: "tuic", name: "Tuic-v5", kind: "port", varName: "TUIC_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "延迟低，打游戏更顺" },
+		{ key: "s5", name: "Socks5", kind: "port", varName: "S5_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理，无加密易被封" },
+		{ key: "anytls", name: "AnyTLS", kind: "port", varName: "ANYTLS_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "抗封锁，值得一试" },
+		{ key: "anyreality", name: "AnyReality", kind: "port", varName: "ANYREALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "抗封锁，需新版客户端" },
+		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", transport: "tcp", tag: "CDN 中转", tagClass: "tag-argo", desc: "走 CF 中转，隐藏真 IP" }
 	];
 	// 参与冲突检测的端口空间（固定遍历顺序：先 UDP，再 TCP）。
 	var TRANSPORTS = ["udp", "tcp"];
