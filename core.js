@@ -42,6 +42,8 @@
 
 	// ---------- 节点定义 ----------
 	// 顺序即「添加节点」面板展示顺序（PANEL_ORDER，见下）。
+	// 展示三件套：name（名称）+ tag / tagClass（传输类型气泡）+ desc（一句话简介）。
+	// **卡片与「添加节点」面板共用这三件套**，不再有第二套简介文案（原 panelDesc 已删除）。
 	// tagClass：气泡配色类名（UDP / TCP / Argo 三类互不相同，纯视觉）。
 	// transport：**端口空间分类**，决定冲突检测口径——UDP 与 TCP 是两套独立的端口空间，
 	//           只有「同一 transport + 同一端口号」才算端口冲突。
@@ -50,13 +52,13 @@
 	// 注意：tagClass 只管气泡配色——「传输分类」的两色系（tag-udp / tag-tcp）与 transport 一致，
 	//       但 Argo 的气泡另用中立的 tag-argo，**不要**据 tagClass 反推 transport。
 	var PROTOCOLS = [
-		{ key: "hy2", name: "Hysteria2", kind: "port", varName: "HY2_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "抗丢包、速度猛", panelDesc: "UDP，抗丢包、速度猛" },
-		{ key: "reality", name: "VLESS-Reality", kind: "port", varName: "REALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "最抗封锁", panelDesc: "TCP，最抗封锁" },
-		{ key: "tuic", name: "Tuic-v5", kind: "port", varName: "TUIC_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "低延迟", panelDesc: "UDP，低延迟" },
-		{ key: "s5", name: "Socks5", kind: "port", varName: "S5_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理", panelDesc: "TCP，通用代理" },
-		{ key: "anytls", name: "AnyTLS", kind: "port", varName: "ANYTLS_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "伪装成普通网页流量", panelDesc: "TCP，伪装成普通网页流量" },
-		{ key: "anyreality", name: "AnyReality", kind: "port", varName: "ANYREALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "anytls + reality", panelDesc: "TCP，anytls + reality" },
-		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", transport: "tcp", tag: "CDN 中转", tagClass: "tag-argo", desc: "VMess-WS-TLS 隧道", panelDesc: "VMess-WS-TLS 隧道，脚本默认安装" }
+		{ key: "hy2", name: "Hysteria2", kind: "port", varName: "HY2_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "抗丢包、速度猛" },
+		{ key: "reality", name: "VLESS-Reality", kind: "port", varName: "REALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "最抗封锁" },
+		{ key: "tuic", name: "Tuic-v5", kind: "port", varName: "TUIC_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "低延迟" },
+		{ key: "s5", name: "Socks5", kind: "port", varName: "S5_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理" },
+		{ key: "anytls", name: "AnyTLS", kind: "port", varName: "ANYTLS_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "伪装成普通网页流量" },
+		{ key: "anyreality", name: "AnyReality", kind: "port", varName: "ANYREALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "anytls + reality" },
+		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", transport: "tcp", tag: "CDN 中转", tagClass: "tag-argo", desc: "VMess-WS-TLS 隧道" }
 	];
 	// 参与冲突检测的端口空间（固定遍历顺序：先 UDP，再 TCP）。
 	var TRANSPORTS = ["udp", "tcp"];

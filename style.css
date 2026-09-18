@@ -164,6 +164,12 @@ h1.title {
   line-height: 1.3;
   font-weight: 800;
   letter-spacing: -0.01em;
+  /* 标题里「小钢炮脚本」是不可拆的词：窄屏（工具栏加了 ALL 按钮后，320px 下标题可用宽度收窄）
+   * 默认的中文逐字断行会把「小钢炮」拦腰断成「Sing-box 小钢 / 炮脚本」。
+   * keep-all 取消 CJK 逐字断点 → 优先在空格处换行；overflow-wrap:anywhere 兜底，
+   * 万一整段真的放不下仍可断行，绝不横向溢出。 */
+  word-break: keep-all;
+  overflow-wrap: anywhere;
   background: linear-gradient(96deg, var(--accent), var(--accent-2));
   -webkit-background-clip: text;
   background-clip: text;
@@ -248,6 +254,36 @@ h1.title {
   color: var(--danger);
 }
 #resetBtn svg { display: block; }
+
+/* ---------- all-select button「ALL」（描边强调：透明底 + 靛色边框/文字，同尺寸 / 同圆角） ----------
+ * 位置：#themeBtn 与 #resetBtn 之间（HTML 顺序即视觉顺序）。
+ * 语义：一键启用**全部直连协议**节点（全选）；不动 Argo（Argo 是 CDN 中转隧道，默认已启用）。
+ * 三态工具栏语言：主题=实心中立卡片式、ALL=描边靛（正向批量操作）、重置=描边红（危险）。
+ * 对比度：浅色 --accent #4f46e5 ↔ --bg #f5f7fb = 5.88:1；深色 #7c86ff ↔ #0e1117 = 6.04:1
+ *        （同时满足正文 4.5:1 与控件边界 3:1）。
+ * ⚠️ 下面用 ID 选择器覆写 box-shadow: none —— ID 特异性高于 `.theme-btn:focus-visible`，
+ *    若不显式补回焦点环，键盘聚焦时看不见焦点（见文件末尾的 :focus-visible 补丁）。 */
+.all-btn { flex: 0 0 auto; }
+#allBtn {
+  background: transparent;
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: none;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  line-height: 1;
+}
+#allBtn:hover {
+  background: var(--accent-soft);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* 焦点环补丁：ID 选择器（#allBtn / #resetBtn）的 `box-shadow: none` 会盖掉
+ * `.theme-btn:focus-visible` 的焦点环，这里用同等或更高的特异性补回，保证键盘可达性。 */
+#allBtn:focus-visible,
+#resetBtn:focus-visible { outline: none; box-shadow: var(--focus); }
 
 /* ---------- uuid section ---------- */
 .uuid-section {
@@ -627,7 +663,7 @@ h1.title {
   cursor: pointer;
   display: grid;
   grid-template-columns: 1fr auto;
-  grid-template-areas: "name tag" "desc tag";
+  grid-template-areas: "head tag" "desc tag";
   column-gap: 10px;
   align-items: center;
   transition: background .13s ease;
@@ -635,7 +671,11 @@ h1.title {
 .add-item:hover:not(:disabled), .add-item:focus-visible:not(:disabled) { background: var(--accent-soft); outline: none; }
 .add-item:disabled { cursor: default; opacity: 0.55; }
 
-.add-item-name { grid-area: name; font-weight: 700; font-size: 14px; }
+/* 标题行：名称 + 传输类型气泡 —— 与上方「已选节点」卡片同构，
+ * 气泡直接复用 `.tag` / `.tag-udp` / `.tag-tcp` / `.tag-argo`（颜色 token 完全一致），
+ * 因此不再需要「UDP，…」这种把传输类型写进简介的前缀文案。 */
+.add-item-head { grid-area: head; display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
+.add-item-name { font-weight: 700; font-size: 14px; }
 .add-item-desc { grid-area: desc; font-size: 12.5px; color: var(--fg-muted); }
 .add-item-tag {
   grid-area: tag;

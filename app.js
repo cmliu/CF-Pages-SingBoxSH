@@ -146,7 +146,10 @@
 	function renderThemeButton() {
 		if (!els.themeBtn) { return; }
 		var isDark = themeMode === "dark";
-		els.themeBtn.innerHTML = isDark ? MOON_SVG : SUN_SVG;
+		// 图标表示「**点击后会切换到的主题**」，不是当前主题：
+		//   深色时显示太阳（点击 → 浅色）、浅色时显示月亮（点击 → 深色）。
+		// 这样图标本身就是动作预览，与 aria-label / title 描述的「切换目标」一致。
+		els.themeBtn.innerHTML = isDark ? SUN_SVG : MOON_SVG;
 		var label = isDark ? "当前深色主题，点击切换到浅色主题" : "当前浅色主题，点击切换到深色主题";
 		els.themeBtn.setAttribute("aria-label", label);
 		els.themeBtn.setAttribute("title", label);
@@ -522,6 +525,45 @@
 		els.addBtn.focus();
 	}
 
+	/**
+	 * 工具栏「ALL」按钮：一键全选——启用**全部节点**（6 个直连协议 + Argo）。
+	 *
+	 * 规则：
+	 * - 已启用的节点**保持原端口不变**（不打扰用户已填好的值）；
+	 * - 新启用的直连协议逐个随机取一个端口，且**每分配一个就重算一次 usedPorts()**，
+	 *   因此新端口之间、以及与既有端口都不会重复；
+	 * - **Argo 也在全选范围内**（ALL 就是全选）。它按「添加节点」的老规矩走：端口保持**留空**，
+	 *   由脚本用默认 8001（输入框以 placeholder 提示），命令里不会多出多余的 ARGO_PORT；
+	 *   仅当此前有残留值时才沿用。
+	 *   节点处理顺序用 `CARD_ORDER`（Argo 置顶），这样它占用的 8001 会**先**进入已占用集合，
+	 *   后面 6 个直连协议的随机端口自然避开它；
+	 * - 已经全选时不做任何改动，只给一句轻提示（避免「点了没反应」的困惑）。
+	 */
+	function enableAllNodes() {
+		var pending = Core.CARD_ORDER.filter(function (key) {
+			return state.nodes[key] && !state.nodes[key].enabled;
+		});
+		if (!pending.length) {
+			toast("所有节点已经全部启用");
+			return;
+		}
+		pending.forEach(function (key) {
+			var node = state.nodes[key];
+			node.enabled = true;
+			if (Core.PROTO_MAP[key].kind === "argo") {
+				// 与 addNode() 的 Argo 分支一致：端口保持留空（= 脚本默认 8001）
+				if (node.port === undefined || node.port === null) { node.port = ""; }
+				argoOpen = false;
+			} else {
+				node.port = String(Core.randomPort(usedPorts()));
+			}
+		});
+		save();
+		renderCards();
+		refreshOutput();
+		toast("已全选全部节点（" + Core.CARD_ORDER.length + " 个）");
+	}
+
 	function resetAll() {
 		state = Core.createInitialState();
 		argoOpen = false;
@@ -713,8 +755,13 @@
 			var item = el("button", "add-item");
 			item.type = "button";
 			item.setAttribute("role", "menuitem");
-			item.appendChild(el("span", "add-item-name", def.name));
-			item.appendChild(el("span", "add-item-desc", def.panelDesc));
+			// 与上方「已选节点」卡片同构：名称 + 传输类型气泡（tagClass 驱动配色）+ 简介（desc）。
+			// 气泡让用户在下拉里就能分辨 UDP / TCP，不必靠「UDP，…」前缀的重复文案。
+			var head = el("span", "add-item-head");
+			head.appendChild(el("span", "add-item-name", def.name));
+			head.appendChild(el("span", "tag " + def.tagClass, def.tag));
+			item.appendChild(head);
+			item.appendChild(el("span", "add-item-desc", def.desc));
 			item.appendChild(el("span", "add-item-tag", added ? "已添加" : "添加"));
 			if (added) {
 				item.disabled = true;
@@ -765,6 +812,7 @@
 			stopCopyBtn: document.getElementById("stopCopyBtn"),
 			stopFeedback: document.getElementById("stopFeedback"),
 			themeBtn: document.getElementById("themeBtn"),
+			allBtn: document.getElementById("allBtn"),
 			resetBtn: document.getElementById("resetBtn"),
 			toast: document.getElementById("toast")
 		};
@@ -808,6 +856,7 @@
 		els.copyBtn.addEventListener("click", doCopy);
 		els.stopCopyBtn.addEventListener("click", doStopCopy);
 		els.themeBtn.addEventListener("click", toggleTheme);
+		els.allBtn.addEventListener("click", enableAllNodes);
 		els.resetBtn.addEventListener("click", resetAll);
 
 		renderCards();
