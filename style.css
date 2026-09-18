@@ -33,6 +33,15 @@
   --tag-tcp-bg: #e0e7ff;
   --tag-argo-fg: #9a3412;
   --tag-argo-bg: #ffe9c7;
+  /* 推荐指数星星（图形对象，需 ≥3:1）。⚠️ 必须按**最差底色**选色，不能只看白底：
+   * 面板行在 :hover / :focus-visible 时会叠一层 --accent-soft（合成后 ≈ rgb(237,237,252)）。
+   *   --star-on  #c2670a ↔ #ffffff = 4.01:1，↔ 叠加后的 rgb(237,237,252) = 3.46:1 ✓
+   *   --star-off #7c8698 ↔ #ffffff = 3.67:1，↔ 叠加后 = 3.17:1 ✓
+   * （#b45309 偏褐、用户反馈「不像星星」故提亮；但不能更亮：#d97706 在叠加底色上仅 2.75:1、
+   *   #f59e0b 白底仅 2.15:1，都会破本项目对比度底线。）
+   * 深色对应 #fbbf24 / #778293。改此值必须同步另外两处主题块。 */
+  --star-on: #c2670a;
+  --star-off: #7c8698;
   --danger: #dc2626;
   --danger-soft: rgba(220, 38, 38, 0.09);
   --warn: #92400e;
@@ -71,6 +80,8 @@
     --tag-tcp-bg: rgba(124, 134, 255, 0.18);
     --tag-argo-fg: #FF9500;
     --tag-argo-bg: rgba(148, 163, 184, 0.20);
+  --star-on: #fbbf24;
+  --star-off: #778293;
     --danger: #f87171;
     --danger-soft: rgba(248, 113, 113, 0.14);
     --warn: #fbbf24;
@@ -109,6 +120,8 @@
   --tag-tcp-bg: rgba(124, 134, 255, 0.18);
   --tag-argo-fg: #FF9500;
   --tag-argo-bg: rgba(148, 163, 184, 0.2);
+  --star-on: #fbbf24;
+  --star-off: #778293;
   --danger: #f87171;
   --danger-soft: rgba(248, 113, 113, 0.14);
   --warn: #fbbf24;
@@ -407,6 +420,41 @@ h1.title {
 .tag-udp { color: var(--tag-udp-fg); background: var(--tag-udp-bg); }
 .tag-tcp { color: var(--tag-tcp-fg); background: var(--tag-tcp-bg); }
 .tag-argo { color: var(--tag-argo-fg); background: var(--tag-argo-bg); }
+
+/* ---------- 推荐指数星星（.stars）----------
+ * 纯 SVG，5 颗；半星 = 前景层宽度 50% + overflow:hidden 裁剪（见 app.js 的 buildRating）。
+ * 尺寸约定：单颗 11×11、间距 2px → 整组 63px。**改尺寸要同步 app.js 的 STAR_SIZE 与本文件的
+ * .star 宽高**，否则前景层会比背景星大一圈、半星也会错位。 */
+.stars {
+  /* 紧贴着前面的元素（气泡）靠左排，不再顶到容器右端 —— 间距由父容器的 gap 给，
+   * 所以卡片 .card-title-row 与面板 .add-item-head 里都是「名称 · 气泡 · 星星」连排。 */
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex: 0 0 auto;
+  color: var(--star-on);
+}
+.star {
+  position: relative;
+  display: block;
+  width: 11px;
+  height: 11px;
+  flex: 0 0 auto;
+}
+.star svg { display: block; }
+/* 前景层：宽度由状态类给 —— is-full = 100%、is-half = 50%（半星就靠这条），
+ * overflow:hidden 负责把右半边裁掉。刻意不用内联 style，与 .is-copied / .invalid 等既有状态类一致。 */
+.star-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  overflow: hidden;
+  color: var(--star-on);
+}
+.star.is-full .star-fill { width: 100%; }
+.star.is-half .star-fill { width: 50%; }
+.star.is-empty { color: var(--star-off); }
 
 .card-desc { margin: 3px 0 0; font-size: 13px; color: var(--fg-muted); }
 

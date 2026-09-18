@@ -18,6 +18,50 @@
 	var REROLL_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8"></path><path d="M21 3v5h-5"></path></svg>';
 	var TRASH_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"></path><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"></path><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"></path><path d="M10 11v6"></path><path d="M14 11v6"></path></svg>';
 
+	/* ---------- 推荐指数星星（纯 SVG，跨设备/字体一致） ----------
+	 * 为什么不用「★★★★☆」这类字符：星形的字形在各平台/字体里差异很大（有的圆角有的尖角、
+	 * 有的还是 emoji 彩色星），半星更是只能靠「⯨」之类的冷门字符，很多设备直接缺字变豆腐块。
+	 * SVG 能保证形状、大小、半星比例在所有设备上完全一致。
+	 * 半星实现：每颗星 =「描边空星」背景层 +「实心星」前景层，前景层用 CSS 宽度(0/50/100%) +
+	 * overflow:hidden 裁剪。刻意**不用** SVG <clipPath> / <linearGradient> —— 那些要唯一 id，
+	 * 面板里 7 行 × 5 颗会互相冲突；也不用 CSS clip-path，少一层兼容性依赖。 */
+	var STAR_PATH = "M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z";
+	var STAR_SIZE = 11;   // 单颗星的边长（px）；改这个必须同步 style.css 的 .star 宽高
+	function starSvg(filled) {
+		return '<svg viewBox="0 0 24 24" width="' + STAR_SIZE + '" height="' + STAR_SIZE + '" aria-hidden="true" focusable="false" ' +
+			(filled ? 'fill="currentColor"' : 'fill="none"') +
+			' stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="' + STAR_PATH + '"></path></svg>';
+	}
+
+	/**
+	 * 按推荐指数渲染 5 颗星（支持半星）。
+	 * 指数本身由 `core.js` 的 `starFills()` 归一化（钳到 0–5、吸附到 0.5），所以这里只负责画。
+	 * 无障碍：整组用 role="img" + aria-label（"推荐指数 4.5 / 5 星"），里面的 SVG 全部 aria-hidden。
+	 * @param {number} rating 推荐指数（0–5，可含 0.5）
+	 * @returns {HTMLElement}
+	 */
+	function buildRating(rating) {
+		var fills = Core.starFills(rating);
+		var value = Core.normalizeRating(rating);
+		var label = "推荐指数 " + value + " / " + Core.RATING_MAX + " 星";
+		var wrap = el("span", "stars");
+		wrap.setAttribute("role", "img");
+		wrap.setAttribute("aria-label", label);
+		wrap.setAttribute("title", label);
+		fills.forEach(function (fill) {
+			var cls = fill >= 1 ? " is-full" : (fill > 0 ? " is-half" : " is-empty");
+			var star = el("span", "star" + cls);
+			star.innerHTML = starSvg(false);      // 背景层：描边空星
+			if (fill > 0) {
+				var fg = el("span", "star-fill");
+				fg.innerHTML = starSvg(true);   // 前景层：实心星，被父层宽度裁掉右半边
+				star.appendChild(fg);           // 前景层宽度（100% / 50%）由 style.css 的状态类给
+			}
+			wrap.appendChild(star);
+		});
+		return wrap;
+	}
+
 	var state = Core.createInitialState();
 	var themeMode = "light";   // 由 resolveTheme() 决定，见下
 	var argoOpen = false;      // Argo「高级设置」折叠状态
@@ -239,6 +283,8 @@
 		titleRow.appendChild(el("h3", "card-name", def.name));
 		// 气泡按传输类别分色：UDP / TCP / Argo（三类互不相同，不靠文案判断）
 		titleRow.appendChild(el("span", "tag " + def.tagClass, def.tag));
+		// 推荐指数星星，紧贴在气泡右侧（与「添加节点」面板同款；卡片上是只读展示，不可点）
+		titleRow.appendChild(buildRating(def.rating));
 		info.appendChild(titleRow);
 		info.appendChild(el("p", "card-desc", def.desc));
 
@@ -755,11 +801,13 @@
 			var item = el("button", "add-item");
 			item.type = "button";
 			item.setAttribute("role", "menuitem");
-			// 与上方「已选节点」卡片同构：名称 + 传输类型气泡（tagClass 驱动配色）+ 简介（desc）。
+			// 与上方「已选节点」卡片同构：名称 + 传输类型气泡（tagClass 驱动配色）+ 简介（desc）；
+			// 推荐指数星星放同一行的右端（`.stars` 用 margin-left:auto 顶到最右）。
 			// 气泡让用户在下拉里就能分辨 UDP / TCP，不必靠「UDP，…」前缀的重复文案。
 			var head = el("span", "add-item-head");
 			head.appendChild(el("span", "add-item-name", def.name));
 			head.appendChild(el("span", "tag " + def.tagClass, def.tag));
+			head.appendChild(buildRating(def.rating));
 			item.appendChild(head);
 			item.appendChild(el("span", "add-item-desc", def.desc));
 			item.appendChild(el("span", "add-item-tag", added ? "已添加" : "添加"));

@@ -42,8 +42,9 @@
 
 	// ---------- 节点定义 ----------
 	// 顺序即「添加节点」面板展示顺序（PANEL_ORDER，见下）。
-	// 展示三件套：name（名称）+ tag / tagClass（传输类型气泡）+ desc（一句话简介）。
-	// **卡片与「添加节点」面板共用这三件套**，不再有第二套简介文案（原 panelDesc 已删除）。
+	// 展示四件套：name（名称）+ tag / tagClass（传输类型气泡）+ desc（一句话简介）+ rating（推荐指数）。
+	// name / tag / desc **卡片与「添加节点」面板共用**，不再有第二套简介文案（原 panelDesc 已删除）；
+	// rating 目前只在「添加节点」面板里显示（选之前给个参考），卡片上不显示。
 	// tagClass：气泡配色类名（UDP / TCP / Argo 三类互不相同，纯视觉）。
 	// transport：**端口空间分类**，决定冲突检测口径——UDP 与 TCP 是两套独立的端口空间，
 	//           只有「同一 transport + 同一端口号」才算端口冲突。
@@ -52,16 +53,51 @@
 	// 注意：tagClass 只管气泡配色——「传输分类」的两色系（tag-udp / tag-tcp）与 transport 一致，
 	//       但 Argo 的气泡另用中立的 tag-argo，**不要**据 tagClass 反推 transport。
 	var PROTOCOLS = [
-		{ key: "hy2", name: "Hysteria2", kind: "port", varName: "HY2_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "暴力发包，劣质线路首选" },
-		{ key: "reality", name: "VLESS-Reality", kind: "port", varName: "REALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "最抗封锁，优质线路首选" },
-		{ key: "tuic", name: "Tuic-v5", kind: "port", varName: "TUIC_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "延迟低，打游戏更顺" },
-		{ key: "s5", name: "Socks5", kind: "port", varName: "S5_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理，无加密易被封" },
-		{ key: "anytls", name: "AnyTLS", kind: "port", varName: "ANYTLS_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "抗封锁，值得一试" },
-		{ key: "anyreality", name: "AnyReality", kind: "port", varName: "ANYREALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "抗封锁，需新版客户端" },
-		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", transport: "tcp", tag: "CDN 中转", tagClass: "tag-argo", desc: "走 CF 中转，隐藏真 IP" }
+		{ key: "hy2", name: "Hysteria2", kind: "port", varName: "HY2_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "暴力发包，劣质线路首选", rating: 4 },
+		{ key: "reality", name: "VLESS-Reality", kind: "port", varName: "REALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "最抗封锁，优质线路首选", rating: 5 },
+		{ key: "tuic", name: "Tuic-v5", kind: "port", varName: "TUIC_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "延迟低，打游戏更顺", rating: 3.5 },
+		{ key: "s5", name: "Socks5", kind: "port", varName: "S5_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理，无加密易被封", rating: 1 },
+		{ key: "anytls", name: "AnyTLS", kind: "port", varName: "ANYTLS_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "抗封锁，值得一试", rating: 4.5 },
+		{ key: "anyreality", name: "AnyReality", kind: "port", varName: "ANYREALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "抗封锁，需新版客户端", rating: 3 },
+		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", transport: "tcp", tag: "CDN 中转", tagClass: "tag-argo", desc: "走 CF 中转，隐藏真 IP", rating: 4 }
 	];
 	// 参与冲突检测的端口空间（固定遍历顺序：先 UDP，再 TCP）。
 	var TRANSPORTS = ["udp", "tcp"];
+
+	// ---------- 推荐指数（rating）----------
+	// 满分 5 星，**支持半星**（取值按 0.5 步进；写入任意数值都会被 normalizeRating 吸附到 0.5）。
+	// 只做展示，不参与命令生成。
+	var RATING_MAX = 5;
+	var RATING_STEP = 0.5;
+
+	/**
+	 * 归一化推荐指数：非有限数 → 0；越界钳到 [0, RATING_MAX]；按 RATING_STEP 吸附。
+	 * @param {*} value
+	 * @returns {number} 0 ~ 5，0.5 的整数倍
+	 */
+	function normalizeRating(value) {
+		var n = Number(value);
+		if (!isFinite(n)) { return 0; }
+		if (n < 0) { n = 0; }
+		if (n > RATING_MAX) { n = RATING_MAX; }
+		return Math.round(n / RATING_STEP) * RATING_STEP;
+	}
+
+	/**
+	 * 把推荐指数拆成每颗星的填充度，供渲染层直接使用（纯函数，便于单测）。
+	 * 例：4.5 → [1, 1, 1, 1, 0.5]；0 → [0, 0, 0, 0, 0]；5 → [1, 1, 1, 1, 1]。
+	 * @param {*} value
+	 * @returns {Array<number>} 长度为 RATING_MAX，元素 ∈ {0, 0.5, 1}
+	 */
+	function starFills(value) {
+		var v = normalizeRating(value);
+		var out = [];
+		for (var i = 0; i < RATING_MAX; i++) {
+			var d = v - i;
+			out.push(d >= 1 ? 1 : (d >= RATING_STEP ? RATING_STEP : 0));
+		}
+		return out;
+	}
 
 	// 面板展示顺序（「添加节点」下拉）
 	var PANEL_ORDER = ["hy2", "reality", "tuic", "s5", "anytls", "anyreality", "argo"];
@@ -469,6 +505,8 @@
 		RANDOM_PORT_MIN: RANDOM_PORT_MIN,
 		RANDOM_PORT_MAX: RANDOM_PORT_MAX,
 		ARGO_DEFAULT_PORT: ARGO_DEFAULT_PORT,
+		RATING_MAX: RATING_MAX,
+		RATING_STEP: RATING_STEP,
 		NAME_MAX: NAME_MAX,
 		SCRIPT_CMD: SCRIPT_CMD,
 		STOP_CMD: STOP_CMD,
@@ -482,6 +520,8 @@
 		validatePort: validatePort,
 		validateUuid: validateUuid,
 		validateName: validateName,
+		normalizeRating: normalizeRating,
+		starFills: starFills,
 		randomPort: randomPort,
 		randomUuid: randomUuid,
 		cleanValue: cleanValue,
