@@ -41,7 +41,8 @@
 	var NAME_BAD_RE = /[\s'"`$;|&<>(){}[\]*?!#~\\]/;
 
 	// ---------- 节点定义 ----------
-	// 顺序即「添加节点」面板展示顺序（PANEL_ORDER，见下）。
+	// 本数组的声明顺序**不再等于**界面展示顺序：展示顺序由 orderedKeys() 按 rating 降序派生
+	// （Argo 永远置顶）；声明顺序只作为**同分时的稳定排序依据**。
 	// 展示四件套：name（名称）+ tag / tagClass（传输类型气泡）+ desc（一句话简介）+ rating（推荐指数）。
 	// name / tag / desc **卡片与「添加节点」面板共用**，不再有第二套简介文案（原 panelDesc 已删除）；
 	// rating 目前只在「添加节点」面板里显示（选之前给个参考），卡片上不显示。
@@ -54,12 +55,12 @@
 	//       但 Argo 的气泡另用中立的 tag-argo，**不要**据 tagClass 反推 transport。
 	var PROTOCOLS = [
 		{ key: "hy2", name: "Hysteria2", kind: "port", varName: "HY2_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "暴力发包，劣质线路首选", rating: 4 },
-		{ key: "reality", name: "VLESS-Reality", kind: "port", varName: "REALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "最抗封锁，优质线路首选", rating: 5 },
+		{ key: "reality", name: "VLESS-Reality", kind: "port", varName: "REALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "最抗封锁，优质线路首选", rating: 4.5 },
 		{ key: "tuic", name: "Tuic-v5", kind: "port", varName: "TUIC_PORT", transport: "udp", tag: "UDP 直连", tagClass: "tag-udp", desc: "延迟低，打游戏更顺", rating: 3.5 },
-		{ key: "s5", name: "Socks5", kind: "port", varName: "S5_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理，无加密易被封", rating: 1 },
-		{ key: "anytls", name: "AnyTLS", kind: "port", varName: "ANYTLS_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "抗封锁，值得一试", rating: 4.5 },
+		{ key: "s5", name: "Socks5", kind: "port", varName: "S5_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "通用代理，无加密易被封", rating: 0.5 },
+		{ key: "anytls", name: "AnyTLS", kind: "port", varName: "ANYTLS_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "抗封锁，值得一试", rating: 4 },
 		{ key: "anyreality", name: "AnyReality", kind: "port", varName: "ANYREALITY_PORT", transport: "tcp", tag: "TCP 直连", tagClass: "tag-tcp", desc: "抗封锁，需新版客户端", rating: 3 },
-		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", transport: "tcp", tag: "CDN 中转", tagClass: "tag-argo", desc: "走 CF 中转，隐藏真 IP", rating: 4 }
+		{ key: "argo", name: "Argo", kind: "argo", varName: "ARGO_PORT", transport: "tcp", tag: "CDN 中转", tagClass: "tag-argo", desc: "走 CF 中转，隐藏真 IP", rating: 3.5 }
 	];
 	// 参与冲突检测的端口空间（固定遍历顺序：先 UDP，再 TCP）。
 	var TRANSPORTS = ["udp", "tcp"];
@@ -99,10 +100,29 @@
 		return out;
 	}
 
-	// 面板展示顺序（「添加节点」下拉）
-	var PANEL_ORDER = ["hy2", "reality", "tuic", "s5", "anytls", "anyreality", "argo"];
-	// 卡片展示顺序（Argo 置顶）
-	var CARD_ORDER = ["argo", "hy2", "reality", "tuic", "s5", "anytls", "anyreality"];
+	/**
+	 * 列表展示顺序（「已选节点」卡片 与「添加节点」下拉 共用同一条规则）：
+	 * **Argo 永远置顶**，其余按推荐指数（rating）**降序**；
+	 * 同分时保持 `PROTOCOLS` 的声明顺序（稳定排序，避免顺序随机跳动）。
+	 *
+	 * 关键：顺序**由 rating 派生**，不是写死的数组 —— 改 `PROTOCOLS[].rating` 后顺序自动跟着变。
+	 * 只影响「列表展示」，**不影响命令里的变量输出顺序**（那是 `PORT_ORDER` / `VAR_ORDER` 的冻结契约）。
+	 * @returns {Array<string>} 节点 key 的展示顺序
+	 */
+	function orderedKeys() {
+		var first = [], rest = [];
+		PROTOCOLS.forEach(function (p, i) {
+			if (p.kind === "argo") { first.push(p.key); }
+			else { rest.push({ key: p.key, rating: normalizeRating(p.rating), i: i }); }
+		});
+		rest.sort(function (a, b) { return (b.rating - a.rating) || (a.i - b.i); });
+		return first.concat(rest.map(function (r) { return r.key; }));
+	}
+
+	// 面板展示顺序（「添加节点」下拉）与卡片展示顺序：同为「Argo 置顶 + 推荐指数降序」。
+	// 两个名字保留是因为它们描述的是两个不同的界面位置；万一将来需要分开定义，改各自那一行即可。
+	var PANEL_ORDER = orderedKeys();
+	var CARD_ORDER = orderedKeys();
 	// 直连端口变量输出顺序（固定，命令里 6 个直连协议的先后）
 	var PORT_ORDER = ["hy2", "tuic", "reality", "s5", "anytls", "anyreality"];
 	// 完整变量输出顺序（固定契约，UUID 永远第一）：
@@ -514,6 +534,7 @@
 		PROTO_MAP: PROTO_MAP,
 		PANEL_ORDER: PANEL_ORDER,
 		CARD_ORDER: CARD_ORDER,
+		orderedKeys: orderedKeys,
 		PORT_ORDER: PORT_ORDER,
 		VAR_ORDER: VAR_ORDER,
 		createInitialState: createInitialState,
