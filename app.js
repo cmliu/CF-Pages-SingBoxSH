@@ -349,6 +349,33 @@
 			if (!node || !node.enabled) { return; }
 			els.cardList.appendChild(buildCard(key, node));
 		});
+		syncAllBtnsDisabled();
+	}
+
+	/**
+	 * 「协议已经全部在列」时，把 ALL 与「+ 更多节点协议」两颗按钮一起置灰（不可选）。
+	 *
+	 * 语义：两颗按钮都只在「还有东西可选」时才成立 —— ALL = 一键全选，「更多节点协议」= 再挑一个。
+	 * 7 个节点全启用后它们都是空操作，置灰比「点了没反应」清楚。disabled 与 aria-disabled 同步写
+	 * （沿用 setCopyDisabled 的既有写法），键盘 / 读屏拿到的状态一致。
+	 * 复位路径：删掉任一节点卡片、或点「重置」→ 都会走 renderCards() 重算 → 两按钮立刻恢复可点。
+	 * 面板若正开着也一并收起（否则留下一屏全是「已添加」的死菜单）。
+	 *
+	 * 挂点选在 renderCards() 末尾：节点的启用与否**只能由卡片增删改变**（卡片是按 enabled 渲染的），
+	 * 所有增删路径都必经这里，不会漏更新。
+	 * ⚠️ 有意为之的副作用：ALL 按钮同时是彩蛋的触发器，置灰期间浏览器不再派发它的 click，
+	 *    所以「已全选」状态下翻不了面 —— 这是 disabled 的应有之义（不是 bug）。
+	 */
+	function syncAllBtnsDisabled() {
+		var full = Core.CARD_ORDER.every(function (key) {
+			var node = state.nodes[key];
+			return !!(node && node.enabled);
+		});
+		[els.allBtn, els.addBtn].forEach(function (btn) {
+			btn.disabled = full;
+			btn.setAttribute("aria-disabled", full ? "true" : "false");
+		});
+		if (full && panelOpen) { closePanel(false); }
 	}
 
 	function buildCard(key, node) {
@@ -650,6 +677,18 @@
 		renderCards();
 		refreshOutput();
 		els.addBtn.focus();
+	}
+
+	/**
+	 * 工具栏「ALL」按钮的**彩蛋面**：文本面 ALL ⇄ 「我全都要」梗图马赛克，点一次翻一面。
+	 *
+	 * 只是 classList.toggle —— 两面同槽层叠（.all-face = absolute inset:0），可见性由 CSS 的
+	 * opacity 过渡接管：**不碰尺寸/位置、不切 display**，所以连点不闪、按钮恒 36×36。
+	 * 与全选是同一个 click 上的**两个独立 listener**，不是二选一：点一下既全选又翻面。
+	 * 禁用 JS 时不执行，按钮停在 HTML 默认的文本面（渐进增强）。
+	 */
+	function toggleAllBtnEgg() {
+		els.allBtn.classList.toggle("is-egg");
 	}
 
 	/**
@@ -1028,6 +1067,12 @@
 			replayPulse(els.themeBtn, "is-pulse-theme");
 			toggleTheme();
 		});
+		/* 彩蛋：每次载入随机决定先露哪一面（≈各 50%），**刻意不持久化**（不进 localStorage）。
+		 * 与全选是**同一个 click 上的两个独立 listener**，不是二选一：点一下既全选又翻面。 */
+		if (Math.random() < 0.5) els.allBtn.classList.add("is-egg");
+
+		els.allBtn.addEventListener("click", toggleAllBtnEgg);
+
 		els.allBtn.addEventListener("click", function () {
 			replayPulse(els.allBtn, "is-pulse-all");
 			enableAllNodes();

@@ -66,6 +66,18 @@
   --t-val: #047857;
   --t-bash: #7c3aed;
   --focus: 0 0 0 3px rgba(79, 70, 229, 0.35);
+    /* ---- 彩蛋配色：10 个角色 + 1 个描边，三处主题块必须同步（深色只调贴底色的角色）---- */
+  --egg-ink: #100f10;
+  --egg-gray-dk: #4f4d4b;
+  --egg-gray-lt: #aaaaaa;
+  --egg-blue: #1b435b;
+  --egg-red: #bb4a39;
+  --egg-white: #f8f9f1;
+  --egg-cream: #e1c6a3;
+  --egg-skin: #faa24c;
+  --egg-skin-dk: #e7904d;
+  --egg-brown: #7c6452;
+  --egg-line: #7c828c;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -109,6 +121,18 @@
     --t-val: #6ee7b7;
     --t-bash: #c4b5fd;
     --focus: 0 0 0 3px rgba(124, 134, 255, 0.45);
+        /* ---- 彩蛋配色：10 个角色 + 1 个描边，三处主题块必须同步（深色只调贴底色的角色）---- */
+    --egg-ink: #100f10;
+    --egg-gray-dk: #6b6f76;
+    --egg-gray-lt: #a5a8ad;
+    --egg-blue: #35759a;
+    --egg-red: #c9573f;
+    --egg-white: #f8f9f1;
+    --egg-cream: #e1c6a3;
+    --egg-skin: #faa24c;
+    --egg-skin-dk: #e7904d;
+    --egg-brown: #8a7160;
+    --egg-line: #9aa2ae;
   }
 }
 
@@ -152,6 +176,18 @@
   --t-val: #6ee7b7;
   --t-bash: #c4b5fd;
   --focus: 0 0 0 3px rgba(124, 134, 255, 0.45);
+    /* ---- 彩蛋配色：10 个角色 + 1 个描边，三处主题块必须同步（深色只调贴底色的角色）---- */
+  --egg-ink: #100f10;
+  --egg-gray-dk: #6b6f76;
+  --egg-gray-lt: #a5a8ad;
+  --egg-blue: #35759a;
+  --egg-red: #c9573f;
+  --egg-white: #f8f9f1;
+  --egg-cream: #e1c6a3;
+  --egg-skin: #faa24c;
+  --egg-skin-dk: #e7904d;
+  --egg-brown: #8a7160;
+  --egg-line: #9aa2ae;
 }
 
 * { box-sizing: border-box; }
@@ -262,7 +298,7 @@ h1.title {
   /* 上面补了 transform：让下面的 :active 按下态有平滑过渡；原有三条色彩过渡保持不变。 */
 }
 /* hover 的 border-color 改为靛色微混：底色已提到 --ctl-border，否则 hover 的边框变化会变成空操作 */
-.theme-btn:hover {
+.theme-btn:hover:not(:disabled) {
   color: var(--accent);
   border-color: color-mix(in srgb, var(--accent) 50%, var(--ctl-border));
   background: var(--accent-soft);
@@ -304,6 +340,9 @@ h1.title {
  *    若不显式补回焦点环，键盘聚焦时看不见焦点（见文件末尾的 :focus-visible 补丁）。 */
 .all-btn { flex: 0 0 auto; }
 #allBtn {
+  /* 彩蛋面铺满按钮内圈（34x34 = 36 - 1px 边框 x2），靠 overflow:hidden 让圆角裁掉四角 */
+  position: relative;
+  overflow: hidden;
   background: transparent;
   border-color: var(--accent);
   color: var(--accent);
@@ -313,16 +352,59 @@ h1.title {
   font-weight: 700;
   line-height: 1;
 }
-#allBtn:hover {
+#allBtn:hover:not(:disabled) {
   background: var(--accent-soft);
   border-color: var(--accent);
   color: var(--accent);
 }
 
+/* 禁用态（7 个节点全在列 = 没有可全选的了）：整颗按钮（含彩蛋面像素图）一起淡下去。
+ * 淡在按钮本体的 opacity 上，两面 opacity 会与之相乘 —— 露出那一面跟着淡，藏起来那面仍是 0。 */
+#allBtn:disabled { cursor: not-allowed; opacity: 0.55; }
+
 /* 焦点环补丁：ID 选择器（#allBtn / #resetBtn）的 `box-shadow: none` 会盖掉
  * `.theme-btn:focus-visible` 的焦点环，这里用同等或更高的特异性补回，保证键盘可达性。 */
 #allBtn:focus-visible,
 #resetBtn:focus-visible { outline: none; box-shadow: var(--focus); }
+
+/* ---------- ALL 按钮彩蛋：双面图标（ALL 文本面 ⇄ 「我全都要」梗图马赛克面） ----------
+ * 两面同槽层叠（.all-face = absolute inset:0），只切 opacity，绝不碰尺寸/位置 ——
+ * 所以按钮恒 36x36、工具栏恒 124px（qa_all_chrome B/F 段守护）。
+ * 彩蛋面是 34x34 内联像素图（1 格 = 1px），节点由 index.html 静态内联、不是 JS 生成，
+ * 屏蔽 JS 时保持 HTML 默认 = 文本面可见（渐进增强）。 */
+#allBtn .all-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  transition: opacity .16s ease;
+}
+#allBtn .all-face-egg { opacity: 0; }
+#allBtn.is-egg .all-face-text { opacity: 0; }
+#allBtn.is-egg .all-face-egg { opacity: 1; }
+
+/* 配色：fill 必须走「类 + CSS 变量」（presentation attribute 不支持 var()）。
+ * 10 个角色 + 1 个描边；描边只画在「白须 / 奶白 / 浅灰衣 / 肤 / 肤暗 / 墨」这些贴到
+ * 按钮底色会跌破 3:1 的形状上 —— 帽红 / 袍蓝 / 褐影本身达标，不描。
+ * 像素图本体：34×34 内联 SVG，1 格 = 1px；display:block 归零行内基线误差。 */
+.egg-svg { display: block; }
+.egg-ink { fill: var(--egg-ink); }
+.egg-gray-dk { fill: var(--egg-gray-dk); }
+.egg-gray-lt { fill: var(--egg-gray-lt); }
+.egg-blue { fill: var(--egg-blue); }
+.egg-red { fill: var(--egg-red); }
+.egg-white { fill: var(--egg-white); }
+.egg-cream { fill: var(--egg-cream); }
+.egg-skin { fill: var(--egg-skin); }
+.egg-skin-dk { fill: var(--egg-skin-dk); }
+.egg-brown { fill: var(--egg-brown); }
+.egg-line { fill: var(--egg-line); }
+
+/* 配色：fill 必须走「类 + CSS 变量」（presentation attribute 不支持 var()）。
+ * 10 个角色 + 1 个描边；描边只画在「白须 / 浅灰衣 / 浅褐黄 / 亮肤」这些贴到按钮底色
+ * 会跌破 3:1 的形状上，红帽/蓝袍/橙脸/黑发本身达标，一格没描。 */
 
 /* ---------- 工具栏按钮「点击后」的一次性反馈动效 ----------
  * 需求：点这三颗图标后要「看得出点到了」。方案 = 按下瞬间的 :active 缩放（见上方 .theme-btn:active）
@@ -806,10 +888,22 @@ h1.title {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 28px -12px rgba(79, 70, 229, 0.32);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 10px 28px -12px color-mix(in srgb, var(--accent) 40%, transparent);
 }
-.btn-primary:hover {
+.btn-primary:hover:not(:disabled) {
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 12px 32px -12px rgba(79, 70, 229, 0.42);
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 12px 32px -12px color-mix(in srgb, var(--accent) 52%, transparent);
 }
+
+/* 禁用态（协议已全部在列时，ALL 与「+ 更多节点协议」都是空操作）：
+ * 手法沿用既有约定（.add-item:disabled / .btn-copy[disabled]）——只动 cursor / opacity / 光影，
+ * **不引入任何新颜色**，因此不需要新增主题变量。
+ * ⚠️ hover 规则必须排除 :disabled：禁用元素照样会匹配 :hover，否则鼠标划过仍会亮起来「像能点」。 */
+.btn:disabled { cursor: not-allowed; }
+.btn-primary:disabled {
+  opacity: 0.55;
+  filter: grayscale(0.35);
+  box-shadow: none;
+}
+.btn:disabled:active { transform: none; }
 
 .btn-secondary {
   color: var(--fg);

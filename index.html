@@ -14,12 +14,29 @@
 		<header class="top">
 			<div>
 				<h1 class="title">Sing-box 小钢炮脚本</h1>
-				<p class="subtitle">点「添加节点」勾选你想要的节点，再复制底部的命令，粘到 VPS 上运行即可。全自动安装，不用手工填任何参数。</p>
+				<p class="subtitle">点「更多节点协议」勾选你想要的节点，再复制底部的命令，粘到 VPS 上运行即可。全自动安装，不用手工填任何参数。</p>
 			</div>
 			<div class="toolbar">
 				<button type="button" id="themeBtn" class="theme-btn" aria-label="切换主题"></button>
-				<button type="button" id="allBtn" class="theme-btn all-btn" aria-label="全选：启用全部节点（含 Argo）"
-					title="全选：启用全部节点（含 Argo）">ALL</button>
+				<button type="button" id="allBtn" class="theme-btn all-btn" aria-label="所有节点协议类型，我全都要！"
+					title="所有节点协议类型，我全都要！">
+					<span class="all-face all-face-text" aria-hidden="true">ALL</span>
+					<span class="all-face all-face-egg" aria-hidden="true">
+					<svg class="egg-svg" viewBox="0 0 34 34" width="34" height="34" shape-rendering="crispEdges" aria-hidden="true" focusable="false">
+					    <path class="egg-line" d="M7 0h1v1h-1zM6 1h1v1h-1zM5 2h1v1h-1zM3 3h2v1h-2zM13 3h2v1h-2zM2 4h1v1h-1zM15 4h1v1h-1zM2 5h1v1h-1zM15 5h1v1h-1zM23 5h3v1h-3zM26 6h1v1h-1zM26 7h1v1h-1zM27 8h1v1h-1zM3 10h1v1h-1zM14 10h1v1h-1zM3 11h1v1h-1zM13 11h1v1h-1zM3 12h1v1h-1zM13 12h1v1h-1zM17 12h1v1h-1zM0 13h3v1h-3zM12 13h3v1h-3zM16 13h1v1h-1zM0 14h1v1h-1zM13 14h1v1h-1zM15 14h3v1h-3zM29 14h1v1h-1zM0 15h1v1h-1zM15 15h3v1h-3zM29 15h1v1h-1zM0 16h1v1h-1zM16 16h2v1h-2zM29 16h1v1h-1zM29 17h1v1h-1zM30 18h1v1h-1zM30 19h1v1h-1zM30 20h2v1h-2zM32 21h1v1h-1zM32 22h1v1h-1zM33 23h1v1h-1zM33 24h1v1h-1zM33 25h1v1h-1zM33 26h1v1h-1zM33 27h1v1h-1zM33 28h1v1h-1zM33 29h1v1h-1zM33 30h1v1h-1zM33 31h1v1h-1zM14 33h19v1h-19z"/>
+					    <path class="egg-skin-dk" d="M7 1h1v1h-1zM7 2h1v1h-1zM5 3h3v1h-3zM3 4h5v1h-5zM12 4h3v1h-3zM3 5h4v1h-4zM11 5h4v1h-4zM8 8h2v1h-2zM7 10h1v1h-1zM10 10h1v1h-1zM7 11h1v1h-1zM9 11h3v1h-3zM7 12h5v1h-5zM6 13h2v1h-2zM17 13h2v1h-2zM20 13h3v1h-3zM1 14h2v1h-2zM5 14h2v1h-2zM19 14h1v1h-1zM22 14h1v1h-1zM1 15h2v1h-2zM8 15h3v1h-3zM19 15h1v1h-1zM22 15h1v1h-1zM25 15h1v1h-1zM18 16h8v1h-8zM18 17h6v1h-6zM25 17h1v1h-1zM7 18h1v1h-1zM9 18h2v1h-2zM18 18h6v1h-6zM25 18h1v1h-1zM4 19h1v1h-1zM7 19h1v1h-1zM9 19h2v1h-2zM18 19h8v1h-8zM4 20h1v1h-1zM7 20h1v1h-1zM9 20h2v1h-2zM18 20h8v1h-8zM4 21h2v1h-2zM7 21h4v1h-4zM19 21h8v1h-8zM4 22h2v1h-2zM7 22h1v1h-1zM19 22h8v1h-8zM6 23h2v1h-2zM9 23h1v1h-1zM20 23h3v1h-3zM24 23h2v1h-2zM22 24h1v1h-1zM22 25h1v1h-1zM15 29h1v1h-1zM12 30h2v1h-2zM15 30h1v1h-1zM11 31h4v1h-4zM12 32h1v1h-1zM14 32h2v1h-2z"/>
+					    <path class="egg-red" d="M8 1h3v1h-3zM8 2h3v1h-3zM8 3h4v1h-4zM8 4h4v1h-4zM7 5h4v1h-4zM1 6h16v1h-16zM1 7h16v1h-16zM1 8h2v1h-2zM15 8h2v1h-2zM1 9h2v1h-2zM15 9h1v1h-1zM8 19h1v1h-1zM26 19h1v1h-1zM8 20h1v1h-1zM26 20h1v1h-1zM6 21h1v1h-1zM6 22h1v1h-1zM12 33h2v1h-2z"/>
+					    <path class="egg-cream" d="M6 2h1v1h-1zM12 11h1v1h-1zM6 12h1v1h-1zM12 12h1v1h-1zM7 14h2v1h-2zM5 15h1v1h-1z"/>
+					    <path class="egg-brown" d="M12 3h1v1h-1zM20 6h3v1h-3zM20 7h3v1h-3zM20 8h4v1h-4zM18 9h2v1h-2zM21 9h6v1h-6zM18 10h1v1h-1zM22 10h5v1h-5zM18 11h1v1h-1zM21 11h8v1h-8zM24 12h5v1h-5zM26 13h3v1h-3zM25 14h1v1h-1zM27 19h1v1h-1zM27 20h1v1h-1zM19 25h1v1h-1zM18 26h1v1h-1zM30 26h1v1h-1zM24 27h1v1h-1zM30 27h1v1h-1zM23 28h3v1h-3zM30 28h1v1h-1zM22 29h3v1h-3zM22 30h3v1h-3zM18 31h1v1h-1zM33 32h1v1h-1zM33 33h1v1h-1z"/>
+					    <path class="egg-gray-lt" d="M23 6h3v1h-3zM23 7h3v1h-3zM26 8h1v1h-1zM20 9h1v1h-1zM19 10h3v1h-3zM14 14h1v1h-1zM14 15h1v1h-1zM15 16h1v1h-1zM15 17h2v1h-2zM15 18h3v1h-3zM12 19h1v1h-1zM16 19h2v1h-2zM12 20h1v1h-1zM16 20h2v1h-2zM18 21h1v1h-1zM27 21h1v1h-1zM18 22h1v1h-1zM27 22h2v1h-2zM18 23h2v1h-2zM26 23h4v1h-4zM18 24h1v1h-1zM20 24h2v1h-2zM23 24h10v1h-10zM18 25h1v1h-1zM20 25h2v1h-2zM23 25h10v1h-10zM16 26h2v1h-2zM19 26h11v1h-11zM31 26h2v1h-2zM16 27h2v1h-2zM19 27h5v1h-5zM25 27h5v1h-5zM31 27h2v1h-2zM16 28h2v1h-2zM19 28h4v1h-4zM26 28h4v1h-4zM31 28h2v1h-2zM16 29h6v1h-6zM25 29h8v1h-8zM16 30h6v1h-6zM25 30h8v1h-8zM16 31h2v1h-2zM19 31h14v1h-14zM16 32h2v1h-2zM19 32h14v1h-14z"/>
+					    <path class="egg-gray-dk" d="M3 8h3v1h-3zM12 8h3v1h-3zM19 8h1v1h-1zM24 8h2v1h-2zM3 9h2v1h-2zM12 9h3v1h-3zM19 11h2v1h-2zM18 12h6v1h-6zM25 13h1v1h-1zM0 17h1v1h-1zM26 18h1v1h-1zM4 23h2v1h-2zM8 24h1v1h-1zM19 24h1v1h-1z"/>
+					    <path class="egg-white" d="M6 8h2v1h-2zM10 8h2v1h-2zM5 9h3v1h-3zM10 9h1v1h-1zM4 10h3v1h-3zM13 10h1v1h-1zM4 11h3v1h-3zM4 12h2v1h-2zM3 13h3v1h-3zM8 13h4v1h-4zM3 14h2v1h-2zM9 14h4v1h-4zM3 15h2v1h-2zM7 15h1v1h-1zM11 15h3v1h-3zM4 16h9v1h-9zM5 17h8v1h-8zM6 18h1v1h-1zM8 18h1v1h-1zM11 18h1v1h-1zM11 19h1v1h-1zM11 20h1v1h-1z"/>
+					    <path class="egg-ink" d="M8 9h2v1h-2zM11 9h1v1h-1zM8 10h2v1h-2zM11 10h2v1h-2zM23 13h2v1h-2zM18 14h1v1h-1zM23 14h2v1h-2zM26 14h3v1h-3zM18 15h1v1h-1zM20 15h2v1h-2zM23 15h2v1h-2zM26 15h3v1h-3zM26 16h3v1h-3zM26 17h3v1h-3zM27 18h3v1h-3zM28 19h2v1h-2zM28 20h2v1h-2zM28 21h4v1h-4zM29 22h3v1h-3zM30 23h3v1h-3zM18 27h1v1h-1zM18 28h1v1h-1zM18 32h1v1h-1z"/>
+					    <path class="egg-skin" d="M8 11h1v1h-1zM19 13h1v1h-1zM20 14h2v1h-2zM6 15h1v1h-1zM17 17h1v1h-1zM24 17h1v1h-1zM24 18h1v1h-1zM8 22h3v1h-3zM8 23h1v1h-1zM10 23h1v1h-1zM23 23h1v1h-1zM13 32h1v1h-1z"/>
+					    <path class="egg-blue" d="M1 16h3v1h-3zM13 16h2v1h-2zM1 17h4v1h-4zM13 17h2v1h-2zM0 18h6v1h-6zM12 18h3v1h-3zM0 19h4v1h-4zM5 19h2v1h-2zM13 19h3v1h-3zM0 20h4v1h-4zM5 20h2v1h-2zM13 20h3v1h-3zM0 21h4v1h-4zM11 21h7v1h-7zM0 22h4v1h-4zM11 22h7v1h-7zM0 23h4v1h-4zM11 23h7v1h-7zM0 24h8v1h-8zM9 24h9v1h-9zM0 25h18v1h-18zM0 26h16v1h-16zM0 27h16v1h-16zM0 28h16v1h-16zM0 29h15v1h-15zM0 30h12v1h-12zM14 30h1v1h-1zM0 31h11v1h-11zM15 31h1v1h-1zM0 32h12v1h-12zM0 33h12v1h-12z"/>
+					</svg>
+					</span>
+				</button>
 				<button type="button" id="resetBtn" class="theme-btn reset-btn" aria-label="重置" title="重置"><svg
 						viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"
 						stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -70,7 +87,7 @@
 			<div class="add-wrap" id="addWrap">
 				<button type="button" id="addBtn" class="btn btn-primary btn-add" aria-haspopup="true"
 					aria-expanded="false" aria-controls="addPanel">
-					<span class="plus" aria-hidden="true">+</span> 添加节点
+					<span class="plus" aria-hidden="true">+</span> 更多节点协议
 				</button>
 				<div id="addPanel" class="add-panel" role="menu" aria-label="可添加的节点" hidden></div>
 			</div>
