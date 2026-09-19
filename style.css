@@ -258,7 +258,8 @@ h1.title {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: color .15s ease, border-color .15s ease, background .15s ease;
+  transition: color .15s ease, border-color .15s ease, background .15s ease, transform .12s ease-out;
+  /* 上面补了 transform：让下面的 :active 按下态有平滑过渡；原有三条色彩过渡保持不变。 */
 }
 /* hover 的 border-color 改为靛色微混：底色已提到 --ctl-border，否则 hover 的边框变化会变成空操作 */
 .theme-btn:hover {
@@ -268,6 +269,14 @@ h1.title {
 }
 .theme-btn:focus-visible { outline: none; box-shadow: var(--focus); }
 .theme-btn svg { display: block; }
+
+/* 按下瞬间的反馈：方形的图标按钮「缩一下」最像真的被按下去。
+ * 为什么用 scale(.92) 而不是项目既有 .btn:active 的 translateY(1px)：.btn 是宽文字按钮，
+ *   下移 1px 像「被摁进面板」；而这三颗是 36×36 的方形图标按钮，从中心缩放能从四周同时
+ *   收到「被按下」的体感，也不会因 y 位移让图标相对按钮边框错位。
+ * 过渡由上面 transition 的 transform 提供。reduced-motion 下全局兜底会关掉 transition，
+ *   于是它只剩「瞬间状态切换」（与既有 .btn:active 的既有行为一致），不产生动效。 */
+.theme-btn:active { transform: scale(.92); }
 
 /* ---------- reset icon button（描边红：透明底 + 红边框 + 红图标；与主题按钮同尺寸 / 同圆角） ---------- */
 .reset-btn { flex: 0 0 auto; }
@@ -314,6 +323,53 @@ h1.title {
  * `.theme-btn:focus-visible` 的焦点环，这里用同等或更高的特异性补回，保证键盘可达性。 */
 #allBtn:focus-visible,
 #resetBtn:focus-visible { outline: none; box-shadow: var(--focus); }
+
+/* ---------- 工具栏按钮「点击后」的一次性反馈动效 ----------
+ * 需求：点这三颗图标后要「看得出点到了」。方案 = 按下瞬间的 :active 缩放（见上方 .theme-btn:active）
+ *      + 点击后由 app.js 加类触发的一次性 animation（三颗语义各不相同）。
+ *      ⚠️ 旋转类动画挂在**图标 svg** 上、不是按钮本体上（原因见下）。
+ *
+ * 无障碍降级：本文件末尾的全局兜底
+ *   @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+ *   会把下面所有 animation 一并关掉 —— 我们**刻意不用** !important 去对抗它（抗赢了反而破坏无障碍），
+ *   故此处不需要再写任何 media query。被关掉后按钮只是「瞬间完成」，不做位移动画。
+ *
+ * 布局安全：全部只用 transform / opacity，绝不碰 width/height/margin/padding/border-width，
+ *   因此不引起重排，窄屏（320px）也不会因动效产生横向滚动。
+ * 颜色安全：不引入任何新颜色（只用透明度淡入 + 既有控件底色），也不新增任何 ID 级 box-shadow
+ *   （避免盖掉 .theme-btn:focus-visible 的焦点环，见上方第 313 行起的补丁）。 */
+@keyframes tb-swap {   /* #themeBtn 的图标：从旋进并缩小的状态弹回原位，像「换成了另一个图标」 */
+  from { transform: rotate(-90deg) scale(.6); opacity: .35; }
+  to   { transform: rotate(0deg) scale(1);    opacity: 1; }
+}
+@keyframes tb-pulse {  /* #allBtn：批量生效的弹性脉冲——只放大 8%，克制、不喧宾夺主 */
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+@keyframes tb-rewind { /* #resetBtn 的图标：「回卷重置」——**逆时针**完整转一圈回到起点 */
+  /* 方向别写反：CSS 里 rotate 的**正角度是顺时针**（屏幕坐标 y 轴向下），
+   * 所以「from 正 360 → to 0」角度递减才是逆时针；写成「from -360 → to 0」角度递增，
+   * 实际会顺时针转 —— 与这支图标本身的逆时针箭头方向相反，观感别扭（已修正一次）。 */
+  from { transform: rotate(360deg); }
+  to   { transform: rotate(0deg); }
+}
+/* 三个类互不重叠（每按钮各一个），由 app.js 的 replayPulse() 在点击时加上、动画结束后移除。
+ * 时长 280–400ms（落在克制的 150–450ms 区间内），缓动 ease-out；均一次性，无 infinite，自动结束。
+ *
+ * ⚠️ 动画宿主必须对准「用户看到的东西」，这是本轮踩过的坑：
+ *   · #themeBtn / #resetBtn 的语义载体是**图标 svg**（用户要的是「看得出图标被点中」），
+ *     所以动画挂在 `.is-pulse-* svg` 上 —— 只有图标在转，按钮的描边 / 圆角 / 卡片底纹与阴影
+ *     **完全不动**。（反例：曾把动画挂在按钮本体上，结果整块 36×36 的方形卡片一起旋转、
+ *      短暂变成「菱形卡片」甚至转出工具栏边界；根因就是注释写的是图标语义、实现却挂在按钮上。）
+ *   · #allBtn 是纯文字按钮、内部没有 svg，整体做脉冲反而正常，故动画就打在按钮本体上。
+ * 显式声明 transform-origin: center —— 旋转以图标几何中心为轴；虽浏览器对 svg 默认也按中心转，
+ *   但显式写是零成本防御（避免依赖「内联 svg 按 HTML 元素处理」这一约定）。
+ * 按钮本体的「按下」反馈由上方的 .theme-btn:active { transform: scale(.92) } 单独承担，
+ *   这里刻意**不**给 button 再挂 transform 动画（否则会和 :active 抢同一个 transform 属性）。 */
+.theme-btn.is-pulse-theme svg { animation: tb-swap .28s ease-out; transform-origin: center; }
+.theme-btn.is-pulse-all       { animation: tb-pulse .32s ease-out; }
+.theme-btn.is-pulse-reset svg { animation: tb-rewind .4s ease-out; transform-origin: center; }
 
 /* ---------- uuid section ---------- */
 .uuid-section {

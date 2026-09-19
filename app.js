@@ -141,6 +141,58 @@
 		return node;
 	}
 
+	/* ---------------- 工具栏按钮点击反馈 ---------------- */
+
+	// 三个一次性反馈类，与 style.css 的 .is-pulse-* 一一对应（每颗按钮各一个）。
+	var PULSE_CLASSES = ["is-pulse-theme", "is-pulse-all", "is-pulse-reset"];
+	// 兜底清理时长：必须**大于**最长的一条动画（tb-rewind .4s），否则动画还没结束就把类摘了。
+	var PULSE_FALLBACK_MS = 600;
+	var pulseTimers = {};   // 以类名为键（每类只对应一颗按钮），避免连点叠加定时器
+
+	/**
+	 * 给按钮触发一次性的「已点击」反馈动效：重放 .is-pulse-* 类，让 CSS animation 从头播一次。
+	 *
+	 * 为什么是「先 remove → 强制回流 → 再 add」：
+	 *   若元素上已经挂着同名类，浏览器会认为类名没变、**不会重新开始**动画 →
+	 *   连续快速点击时，第二次及以后就看不到反馈了（这是本任务最容易漏的点）。
+	 *   中间读一次 offsetWidth 会强制样式重算，把「无动画」这一状态落定，随后 add 才能重新触发。
+	 *
+	 * 清理：animationend 由 init() 里的单一委托监听负责摘类（快速、无监听器叠加）；
+	 *   另加一个定时器兜底 —— 因为 reduced-motion 下动画被全局规则禁用、animationend 永远不会触发，
+	 *   没有兜底的话类会残留在按钮上。定时器按类名复用，连点只保留最后一个，不会堆积。
+	 * @param {HTMLElement} node 目标按钮
+	 * @param {string} cls 反馈类名（PULSE_CLASSES 之一）
+	 */
+	function replayPulse(node, cls) {
+		if (!node) { return; }
+		node.classList.remove(cls);
+		void node.offsetWidth;      // 强制回流：使上面 remove 立即生效，从而 add 能重新触发动画
+		node.classList.add(cls);
+		if (pulseTimers[cls]) { window.clearTimeout(pulseTimers[cls]); }
+		pulseTimers[cls] = window.setTimeout(function () {
+			node.classList.remove(cls);
+			pulseTimers[cls] = null;
+		}, PULSE_FALLBACK_MS);
+	}
+
+	/**
+	 * 动画结束时摘掉反馈类（单一委托监听，只在 init() 绑定一次，绝不每次点击都叠加监听器）。
+	 * 关键：动画宿主有两种 —— #allBtn 的脉冲打在**按钮本体**上，而 #themeBtn / #resetBtn 的图标
+	 *   旋转打在**按钮内的 svg** 上，animationend 的 target 会分别是按钮或 svg。反馈类却始终加在
+	 *   按钮上，故这里先定位最近的 .theme-btn 宿主再摘类，否则 svg 宿主的事件会摘错对象、类清不掉。
+	 * 只摘 PULSE_CLASSES 里的类，所以即使页面里别的元素（如 .card 的 rise 动画）触发 animationend 也不受影响。
+	 * @param {AnimationEvent} e
+	 */
+	function onAnimationEnd(e) {
+		var n = e.target;
+		if (!n) { return; }
+		var host = (n.closest && n.closest(".theme-btn")) || n;
+		if (!host.classList) { return; }
+		for (var i = 0; i < PULSE_CLASSES.length; i++) {
+			host.classList.remove(PULSE_CLASSES[i]);
+		}
+	}
+
 	/**
 	 * 收集当前**全部**已占用端口，供端口随机按钮 / addNode() 避开。
 	 * 刻意**不按传输方式过滤**：UDP 与 TCP 虽可在同号端口合法共存，但随机时应避开
@@ -967,9 +1019,25 @@
 		}
 		els.copyBtn.addEventListener("click", doCopy);
 		els.stopCopyBtn.addEventListener("click", doStopCopy);
-		els.themeBtn.addEventListener("click", toggleTheme);
-		els.allBtn.addEventListener("click", enableAllNodes);
-		els.resetBtn.addEventListener("click", resetAll);
+		// 工具栏三颗按钮：把反馈动效放在**事件处理的最前面**（而不是各函数内部的成功分支末尾）——
+		// 这样无论后续逻辑走哪条分支，用户点了就一定有反馈：
+		//   · #allBtn 的 enableAllNodes 在「已经全选」时会提前 return（只弹 toast）；
+		//   · #themeBtn 的 toggleTheme 会重建按钮里的 svg。
+		// 反馈放在最前面，上面两种情况都照常播放。键盘 Enter / 空格触发 click 同样命中这里。
+		els.themeBtn.addEventListener("click", function () {
+			replayPulse(els.themeBtn, "is-pulse-theme");
+			toggleTheme();
+		});
+		els.allBtn.addEventListener("click", function () {
+			replayPulse(els.allBtn, "is-pulse-all");
+			enableAllNodes();
+		});
+		els.resetBtn.addEventListener("click", function () {
+			replayPulse(els.resetBtn, "is-pulse-reset");
+			resetAll();
+		});
+		// 单一委托监听：动画一结束就摘掉反馈类（只绑一次，不随点击叠加）。
+		document.addEventListener("animationend", onAnimationEnd);
 
 		renderCards();
 		refreshOutput();
