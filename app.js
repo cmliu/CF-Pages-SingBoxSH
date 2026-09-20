@@ -926,6 +926,22 @@
 		});
 	}
 
+	var subTimer = null;
+	function doSubCopy() {
+		copyText(Core.SUB_CMD).then(function (success) {
+			if (success) {
+				setCopyState(els.subCopyBtn, true);
+				els.subFeedback.textContent = "查看订阅命令已复制。";
+				if (subTimer) { window.clearTimeout(subTimer); }
+				subTimer = window.setTimeout(function () {
+					setCopyState(els.subCopyBtn, false);
+				}, 1800);
+			} else {
+				els.subFeedback.textContent = "复制失败，请手动选中命令后复制。";
+			}
+		});
+	}
+
 	/* ---------------- 添加节点面板 ---------------- */
 
 	function renderPanel() {
@@ -996,6 +1012,9 @@
 			stopBox: document.getElementById("stopBox"),
 			stopCopyBtn: document.getElementById("stopCopyBtn"),
 			stopFeedback: document.getElementById("stopFeedback"),
+			subBox: document.getElementById("subBox"),
+			subCopyBtn: document.getElementById("subCopyBtn"),
+			subFeedback: document.getElementById("subFeedback"),
 			themeBtn: document.getElementById("themeBtn"),
 			allBtn: document.getElementById("allBtn"),
 			resetBtn: document.getElementById("resetBtn"),
@@ -1014,14 +1033,16 @@
 			els.uuidRandomBtn.innerHTML = REROLL_SVG + '<span class="icon-btn-text">随机生成</span>';
 		}
 
-		// 同步 UUID 卡片（UUID / NAME 输入框 + 折叠态）、停止命令到界面
+		// 同步 UUID 卡片（UUID / NAME 输入框 + 折叠态）、停止命令、查看订阅命令到界面
 		syncUuidSection();
 		els.stopBox.textContent = Core.STOP_CMD;
+		els.subBox.textContent = Core.SUB_CMD;
 
 		// 「复制命令」按钮默认态 = copy 图标 +「复制命令」。app.js 是运行时唯一真源，
 		// 这里归一化一次，抹平 index.html 里为「无 JS 也能看懂」而内联的默认标记。
 		setCopyState(els.copyBtn, false);
 		setCopyState(els.stopCopyBtn, false);
+		setCopyState(els.subCopyBtn, false);
 
 		els.addBtn.addEventListener("click", function (e) {
 			e.stopPropagation();
@@ -1058,6 +1079,7 @@
 		}
 		els.copyBtn.addEventListener("click", doCopy);
 		els.stopCopyBtn.addEventListener("click", doStopCopy);
+		els.subCopyBtn.addEventListener("click", doSubCopy);
 		// 工具栏三颗按钮：把反馈动效放在**事件处理的最前面**（而不是各函数内部的成功分支末尾）——
 		// 这样无论后续逻辑走哪条分支，用户点了就一定有反馈：
 		//   · #allBtn 的 enableAllNodes 在「已经全选」时会提前 return（只弹 toast）；

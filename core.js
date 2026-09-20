@@ -28,6 +28,8 @@
 	var SCRIPT_CMD = "bash <(curl -Ls https://main.ssss.nyc.mn/sb.sh)";
 	// 停止命令：逐字符固定，单引号内的 \.tmp/ 反斜杠需原样保留。
 	var STOP_CMD = "pkill -f '\\.tmp/'";
+	// 查看订阅命令：安装完成后查看脚本生成的订阅文件内容（2026-09-20 新增「查看订阅」区块）。
+	var SUB_CMD = "cat .tmp/sub.txt";
 
 	// ---------- UUID 格式 ----------
 	// 标准 UUID：8-4-4-4-12 十六进制，大小写均可，接受任意版本位。
@@ -545,6 +547,7 @@
 		NAME_MAX: NAME_MAX,
 		SCRIPT_CMD: SCRIPT_CMD,
 		STOP_CMD: STOP_CMD,
+		SUB_CMD: SUB_CMD,
 		PROTOCOLS: PROTOCOLS,
 		PROTO_MAP: PROTO_MAP,
 		PANEL_ORDER: PANEL_ORDER,

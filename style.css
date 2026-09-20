@@ -985,8 +985,8 @@ h1.title {
 }
 .cmd-block + .cmd-block { margin-top: 14px; }
 
-/* 命令区标题行：只放「标题 + 小字提示」（复制按钮已移到右下角的 .cmd-foot）。
- * 标题与提示同行、基线对齐；窄屏（可用宽度不足时）小字提示自然换行到标题下方。 */
+/* 命令区标题行：只放「标题 + 可选小字提示」（复制按钮在右下角的 .cmd-foot）。
+ * 小字与标题同行、基线对齐；窄屏（可用宽度不足）时整块换行到标题下方。 */
 .cmd-head {
   display: flex;
   align-items: baseline;
@@ -995,11 +995,12 @@ h1.title {
   margin-bottom: 12px;
 }
 .cmd-title { font-size: 14px; font-weight: 700; letter-spacing: 0.01em; }
-/* 「安装命令」标题后的说明性小字：字号小于标题（14px），颜色用 --fg-faint
- * （对 --card 浅色 5.04:1 / 深色 4.70:1，达标），不抢标题。新起语义化类名 .cmd-note，
- * **不得**复活本项目早年移除的那些常驻提示行类名（它们在别处有静态断言守着，
- * 连写进注释都会把套件连累红 —— 故此处刻意不点名）。 */
-.cmd-note { margin: 0; font-size: 12.5px; color: var(--fg-faint); }
+/* 「安装命令」标题后的说明性小字（2026-09-20 定稿的重启风险提示；**只有「安装命令」区有**）。
+ * 字号小于标题（14px），颜色用 --fg-faint（对 --card 浅色 5.04:1 / 深色 4.70:1，达标），不抢标题。
+ * flex:1 1 auto + min-width:0 让它吃掉剩余宽度、窄屏正常折行（与 .switch-note 同一范式）。
+ * ⚠️ 此前一度删除（同日早些时候用户要求去文案），随后用户要求在此位置放新提示 → 已恢复，
+ *    文档里的「不得复活」一句作废（见 UI-SPEC.md「命令区」节）。 */
+.cmd-note { margin: 0; font-size: 12.5px; color: var(--fg-faint); flex: 1 1 auto; min-width: 0; }
 
 /* 底部行：左「复制反馈」右「复制命令」按钮 —— 让按钮落在 .cmd-block 的**右下角**，
  * 且右边缘与命令框右边缘对齐（两者同处 .cmd-block 的内容宽度右端）。

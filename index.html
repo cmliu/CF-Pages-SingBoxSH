@@ -95,13 +95,29 @@
 			<section class="cmd-block" aria-label="安装命令">
 				<div class="cmd-head">
 					<div class="cmd-title">安装命令</div>
-					<p class="cmd-note">安装完成后，输入 sb 可调出脚本菜单</p>
+					<p class="cmd-note">临时服务，不设开机自启；设备重启后请重新运行本命令</p>
 				</div>
 				<pre id="cmdBox" class="cmd-box" tabindex="0"></pre>
 				<div id="warnBox" class="warn-box" aria-live="polite"></div>
 				<div class="cmd-foot">
 					<p id="copyFeedback" class="copy-feedback" role="status" aria-live="polite"></p>
 					<button type="button" id="copyBtn" class="btn-copy"><svg viewBox="0 0 24 24" width="16"
+							height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+							stroke-linejoin="round" aria-hidden="true" focusable="false">
+							<rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
+							<path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"></path>
+						</svg>复制命令</button>
+				</div>
+			</section>
+
+			<section class="cmd-block" aria-label="查看订阅">
+				<div class="cmd-head">
+					<div class="cmd-title">查看订阅</div>
+				</div>
+				<pre id="subBox" class="cmd-box" tabindex="0"></pre>
+				<div class="cmd-foot">
+					<p id="subFeedback" class="copy-feedback" role="status" aria-live="polite"></p>
+					<button type="button" id="subCopyBtn" class="btn-copy"><svg viewBox="0 0 24 24" width="16"
 							height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
 							stroke-linejoin="round" aria-hidden="true" focusable="false">
 							<rect width="14" height="14" x="8" y="8" rx="2" ry="2"></rect>
